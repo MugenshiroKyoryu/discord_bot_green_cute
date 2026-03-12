@@ -4,6 +4,8 @@ import asyncio
 import os
 from dotenv import load_dotenv
 
+from myserver import server_on   # เพิ่มบรรทัดนี้
+
 load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -45,6 +47,8 @@ async def load_extensions():
 
 
 async def main():
+
+    server_on()   # <<< เปิด flask server
 
     async with bot:
 
