@@ -14,15 +14,21 @@ async def search_manga(name: str):
 
         async with session.post(
             SEARCH_URL,
-            json=payload
+            json=payload,
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "GreenCuteBot"
+            }
         ) as resp:
 
             data = await resp.json()
 
-        if not data["results"]:
-            return None
+            print("SEARCH RESULT:", data)
 
-        series_id = data["results"][0]["record"]["series_id"]
+            if not data["results"]:
+                return None
+
+            series_id = data["results"][0]["record"]["series_id"]
 
         async with session.get(
             f"{SERIES_URL}/{series_id}"
@@ -35,7 +41,6 @@ async def search_manga(name: str):
         if "titles" in series:
 
             for t in series["titles"]:
-
                 titles.append({
                     "language": t["language"],
                     "title": t["title"]
