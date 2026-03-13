@@ -25,12 +25,12 @@ class Manga(commands.Cog):
             alt_names = manga["associated_names"]
 
             embed = discord.Embed(
-                title="Manga Titles",
+                title="ชื่อเรื่องมังงะ",
                 color=0x2b2d31
             )
 
             embed.add_field(
-                name="Manga Title",
+                name="ชื่อเรื่องมังงะ",
                 value=title,
                 inline=False
             )
@@ -40,7 +40,7 @@ class Manga(commands.Cog):
                 text = "\n".join(alt_names)[:1000]
 
                 embed.add_field(
-                    name="Associated Names",
+                    name="ชื่อที่เกี่ยวข้อง",
                     value=text,
                     inline=False
                 )
