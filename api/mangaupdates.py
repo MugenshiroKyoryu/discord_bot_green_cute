@@ -45,9 +45,13 @@ async def search_manga(name: str):
 
             series = await resp.json()
 
-        result = {
-            "title": series.get("title", "Unknown"),
-            "associated_names": series.get("associated_names", [])
-        }
+        title = series.get("title", "Unknown")
+        alt_names = series.get("associated_names", [])
 
-        return result
+        # รวมชื่อทั้งหมด
+        all_names = [title] + alt_names
+
+        return {
+            "title": title,
+            "all_names": all_names
+        }

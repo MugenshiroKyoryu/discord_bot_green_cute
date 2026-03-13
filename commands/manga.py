@@ -26,24 +26,23 @@ class Manga(commands.Cog):
             manga = await search_manga(name)
 
             title = manga["title"]
-            alt_names = manga["associated_names"]
+            names = manga["all_names"]
+
+            # ป้องกัน embed limit
+            names_text = "\n".join(names)[:1000]
 
             embed = discord.Embed(
                 title=title,
                 color=0x2b2d31
             )
 
-            if alt_names:
-
-                embed.add_field(
-                    name="Associated Names",
-                    value="\n".join(alt_names),
-                    inline=False
-                )
-
-            await interaction.response.send_message(
-                embed=embed
+            embed.add_field(
+                name="All Titles",
+                value=names_text,
+                inline=False
             )
+
+            await interaction.response.send_message(embed=embed)
 
         except Exception as e:
 
@@ -54,7 +53,4 @@ class Manga(commands.Cog):
 
 
 async def setup(bot):
-
-    await bot.add_cog(
-        Manga(bot)
-    )
+    await bot.add_cog(Manga(bot))
