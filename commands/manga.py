@@ -25,6 +25,7 @@ class Manga(commands.Cog):
             alt_names = manga["associated_names"]
             url = manga["url"]
             status = manga["status"]
+            image = manga["image"]
 
             embed = discord.Embed(
                 title=title,
@@ -32,12 +33,18 @@ class Manga(commands.Cog):
                 color=0x2b2d31
             )
 
+            # แสดงปกมังงะ
+            if image:
+                embed.set_thumbnail(url=image)
+
+            # สถานะ
             embed.add_field(
                 name="สถานะ",
                 value=status,
                 inline=False
             )
 
+            # Associated names
             if alt_names:
 
                 text = "\n".join(alt_names)
