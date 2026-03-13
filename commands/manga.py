@@ -23,21 +23,32 @@ class Manga(commands.Cog):
 
             title = manga["title"]
             alt_names = manga["associated_names"]
+            url = manga["url"]
+            status = manga["status"]
 
             embed = discord.Embed(
-                title="ชื่อเรื่องมังงะ",
+                title=title,
+                url=url,                 # คลิกชื่อแล้วไปหน้าเว็บ
                 color=0x2b2d31
             )
 
+            # รูป (กดแล้วไป url)
+            embed.set_image(
+                url="https://cdn.myanimelist.net/images/anime/13/71694.jpg"
+            )
+
             embed.add_field(
-                name="ชื่อเรื่องมังงะ",
-                value=title,
+                name="สถานะ",
+                value=status,
                 inline=False
             )
 
             if alt_names:
 
-                text = "\n".join(alt_names)[:1000]
+                text = "\n".join(alt_names)
+
+                if len(text) > 1024:
+                    text = text[:1020] + "..."
 
                 embed.add_field(
                     name="ชื่อที่เกี่ยวข้อง",
