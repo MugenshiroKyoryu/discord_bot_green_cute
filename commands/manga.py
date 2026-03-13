@@ -3,7 +3,6 @@ from discord import app_commands
 import discord
 
 from api.mangaupdates import search_manga
-from utils.language import language_name
 
 
 class Manga(commands.Cog):
@@ -14,7 +13,7 @@ class Manga(commands.Cog):
 
     @app_commands.command(
         name="manga",
-        description="ค้นหาชื่อมังงะในหลายภาษา"
+        description="ค้นหาชื่อมังงะ"
     )
     async def manga(
         self,
@@ -22,29 +21,28 @@ class Manga(commands.Cog):
         name: str
     ):
 
-        titles = await search_manga(name)
+        manga = await search_manga(name)
 
-        if not titles:
+        if not manga:
 
             await interaction.response.send_message(
                 "ไม่พบมังงะ"
             )
             return
 
+        title = manga["title"]
+        alt_names = manga["associated_names"]
+
         embed = discord.Embed(
-            title="ชื่อมังงะในแต่ละภาษา"
+            title=title,
+            color=0x2b2d31
         )
 
-        for t in titles:
-
-            lang_code = t["language"]
-            title = t["title"]
-
-            lang = language_name(lang_code)
+        if alt_names:
 
             embed.add_field(
-                name=lang,
-                value=title,
+                name="Associated Names",
+                value="\n".join(alt_names),
                 inline=False
             )
 

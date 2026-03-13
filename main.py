@@ -4,7 +4,7 @@ import asyncio
 import os
 from dotenv import load_dotenv
 
-from myserver import server_on   # เพิ่มบรรทัดนี้
+from myserver import server_on
 
 load_dotenv()
 
@@ -48,7 +48,7 @@ async def load_extensions():
 
 async def main():
 
-    server_on()   # <<< เปิด flask server
+    server_on()
 
     async with bot:
 

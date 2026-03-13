@@ -9,9 +9,7 @@ async def search_manga(name: str):
     async with aiohttp.ClientSession() as session:
 
         payload = {
-            "search": {
-                "query": name
-            }
+            "search": name
         }
 
         async with session.post(
@@ -27,7 +25,7 @@ async def search_manga(name: str):
 
             print("SEARCH RESULT:", data)
 
-            if not data.get("results"):
+            if not data["results"]:
                 return None
 
             series_id = data["results"][0]["record"]["series_id"]
@@ -38,15 +36,9 @@ async def search_manga(name: str):
 
             series = await resp.json()
 
-        titles = []
+        result = {
+            "title": series["title"],
+            "associated_names": series.get("associated_names", [])
+        }
 
-        if "titles" in series:
-
-            for t in series["titles"]:
-
-                titles.append({
-                    "language": t.get("language"),
-                    "title": t.get("title")
-                })
-
-        return titles
+        return result
