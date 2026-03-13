@@ -28,13 +28,8 @@ class Manga(commands.Cog):
 
             embed = discord.Embed(
                 title=title,
-                url=url,                 # คลิกชื่อแล้วไปหน้าเว็บ
+                url=url,
                 color=0x2b2d31
-            )
-
-            # รูป (กดแล้วไป url)
-            embed.set_image(
-                url="https://cdn.myanimelist.net/images/anime/13/71694.jpg"
             )
 
             embed.add_field(

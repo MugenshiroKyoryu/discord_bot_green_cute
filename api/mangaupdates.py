@@ -8,9 +8,7 @@ async def search_manga(name: str):
 
     async with aiohttp.ClientSession() as session:
 
-        # -------------------------
         # STEP 1 : Search manga
-        # -------------------------
         payload = {
             "search": name
         }
@@ -29,8 +27,6 @@ async def search_manga(name: str):
 
             data = await resp.json()
 
-            print("SEARCH RESULT:", data)
-
             if "results" not in data:
                 raise Exception("API response ไม่มี field results")
 
@@ -39,9 +35,7 @@ async def search_manga(name: str):
 
             series_id = data["results"][0]["record"]["series_id"]
 
-        # -------------------------
         # STEP 2 : Get series detail
-        # -------------------------
         async with session.get(
             f"{SERIES_URL}/{series_id}"
         ) as resp:
@@ -51,20 +45,15 @@ async def search_manga(name: str):
 
             series = await resp.json()
 
-            print("SERIES RESULT:", series)
-
-        # -------------------------
         # Extract Associated Names
-        # -------------------------
         associated_names = [
             a["title"] for a in series.get("associated", [])
         ]
 
-        # -------------------------
-        # Result
-        # -------------------------
         result = {
             "title": series.get("title", "Unknown"),
+            "url": series.get("url"),
+            "status": series.get("status", "Unknown"),
             "associated_names": associated_names
         }
 
