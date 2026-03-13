@@ -1,16 +1,22 @@
 import aiohttp
+from langdetect import detect
 
 SEARCH_URL = "https://api.mangaupdates.com/v1/series/search"
 SERIES_URL = "https://api.mangaupdates.com/v1/series"
+
+
+def detect_language(text):
+
+    try:
+        return detect(text)
+    except:
+        return "unknown"
 
 
 async def search_manga(name: str):
 
     async with aiohttp.ClientSession() as session:
 
-        # -------------------------
-        # STEP 1 : Search manga
-        # -------------------------
         payload = {
             "search": name
         }
@@ -29,17 +35,11 @@ async def search_manga(name: str):
 
             data = await resp.json()
 
-            if "results" not in data:
-                raise Exception("API response ไม่มี field results")
-
             if not data["results"]:
                 raise Exception("ไม่พบมังงะ")
 
             series_id = data["results"][0]["record"]["series_id"]
 
-        # -------------------------
-        # STEP 2 : Get series detail
-        # -------------------------
         async with session.get(
             f"{SERIES_URL}/{series_id}"
         ) as resp:
@@ -49,24 +49,25 @@ async def search_manga(name: str):
 
             series = await resp.json()
 
-        # -------------------------
-        # Associated names
-        # -------------------------
-        associated_names = [
-            a["title"] for a in series.get("associated", [])
-        ]
+        # Associated names + language
+        associated_names = []
 
-        # -------------------------
-        # Image
-        # -------------------------
+        for a in series.get("associated", []):
+
+            title = a["title"]
+
+            lang = detect_language(title)
+
+            associated_names.append({
+                "title": title,
+                "lang": lang
+            })
+
         image_url = None
 
         if "image" in series:
             image_url = series["image"]["url"]["original"]
 
-        # -------------------------
-        # Result
-        # -------------------------
         result = {
             "title": series.get("title", "Unknown"),
             "url": series.get("url"),

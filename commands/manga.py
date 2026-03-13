@@ -3,6 +3,7 @@ from discord import app_commands
 import discord
 
 from api.mangaupdates import search_manga
+from utils.language import language_name
 
 
 class Manga(commands.Cog):
@@ -33,21 +34,30 @@ class Manga(commands.Cog):
                 color=0x2b2d31
             )
 
-            # แสดงปกมังงะ
             if image:
                 embed.set_thumbnail(url=image)
 
-            # สถานะ
             embed.add_field(
                 name="สถานะ",
                 value=status,
                 inline=False
             )
 
-            # Associated names
+            # แสดงชื่อ + ภาษา
             if alt_names:
 
-                text = "\n".join(alt_names)
+                lines = []
+
+                for item in alt_names:
+
+                    lang_code = item["lang"]
+                    lang_full = language_name(lang_code)
+
+                    lines.append(
+                        f"{item['title']} ({lang_code} {lang_full})"
+                    )
+
+                text = "\n".join(lines)
 
                 if len(text) > 1024:
                     text = text[:1020] + "..."
