@@ -26,8 +26,6 @@ async def search_manga(name: str):
 
             data = await resp.json()
 
-            print("SEARCH RESULT:", data)
-
             if "results" not in data:
                 raise Exception("API response ไม่มี field results")
 
@@ -45,13 +43,7 @@ async def search_manga(name: str):
 
             series = await resp.json()
 
-        title = series.get("title", "Unknown")
-        alt_names = series.get("associated_names", [])
-
-        # รวมชื่อทั้งหมด
-        all_names = [title] + alt_names
-
         return {
-            "title": title,
-            "all_names": all_names
+            "title": series.get("title", "Unknown"),
+            "associated_names": series.get("associated_names", [])
         }
