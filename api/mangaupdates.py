@@ -8,7 +8,12 @@ async def search_manga(name: str):
 
     async with aiohttp.ClientSession() as session:
 
-        payload = {"search": name}
+        # -------------------------
+        # STEP 1 : Search manga
+        # -------------------------
+        payload = {
+            "search": name
+        }
 
         async with session.post(
             SEARCH_URL,
@@ -24,16 +29,19 @@ async def search_manga(name: str):
 
             data = await resp.json()
 
-            if not data.get("results"):
+            print("SEARCH RESULT:", data)
+
+            if "results" not in data:
+                raise Exception("API response ไม่มี field results")
+
+            if not data["results"]:
                 raise Exception("ไม่พบมังงะ")
 
-            record = data["results"][0]["record"]
+            series_id = data["results"][0]["record"]["series_id"]
 
-            series_id = record["series_id"]
-
-            # associated names จาก search
-            associated = record.get("associated_names", [])
-
+        # -------------------------
+        # STEP 2 : Get series detail
+        # -------------------------
         async with session.get(
             f"{SERIES_URL}/{series_id}"
         ) as resp:
@@ -43,12 +51,21 @@ async def search_manga(name: str):
 
             series = await resp.json()
 
-        title = series.get("title", "Unknown")
+            print("SERIES RESULT:", series)
 
-        # รวมชื่อทั้งหมด (แต่ไม่ซ้ำ)
-        names = list(dict.fromkeys(associated))
+        # -------------------------
+        # Extract Associated Names
+        # -------------------------
+        associated_names = [
+            a["title"] for a in series.get("associated", [])
+        ]
 
-        return {
-            "title": title,
-            "associated_names": names
+        # -------------------------
+        # Result
+        # -------------------------
+        result = {
+            "title": series.get("title", "Unknown"),
+            "associated_names": associated_names
         }
+
+        return result
