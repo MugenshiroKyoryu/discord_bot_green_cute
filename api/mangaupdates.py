@@ -8,9 +8,7 @@ async def search_manga(name: str):
 
     async with aiohttp.ClientSession() as session:
 
-        payload = {
-            "search": name
-        }
+        payload = {"search": name}
 
         async with session.post(
             SEARCH_URL,
@@ -26,13 +24,15 @@ async def search_manga(name: str):
 
             data = await resp.json()
 
-            if "results" not in data:
-                raise Exception("API response ไม่มี field results")
-
-            if not data["results"]:
+            if not data.get("results"):
                 raise Exception("ไม่พบมังงะ")
 
-            series_id = data["results"][0]["record"]["series_id"]
+            record = data["results"][0]["record"]
+
+            series_id = record["series_id"]
+
+            # associated names จาก search
+            associated = record.get("associated_names", [])
 
         async with session.get(
             f"{SERIES_URL}/{series_id}"
@@ -43,7 +43,12 @@ async def search_manga(name: str):
 
             series = await resp.json()
 
+        title = series.get("title", "Unknown")
+
+        # รวมชื่อทั้งหมด (แต่ไม่ซ้ำ)
+        names = list(dict.fromkeys(associated))
+
         return {
-            "title": series.get("title", "Unknown"),
-            "associated_names": series.get("associated_names", [])
+            "title": title,
+            "associated_names": names
         }

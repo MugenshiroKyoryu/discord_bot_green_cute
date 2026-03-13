@@ -15,11 +15,7 @@ class Manga(commands.Cog):
         name="manga",
         description="ค้นหาชื่อมังงะ"
     )
-    async def manga(
-        self,
-        interaction: discord.Interaction,
-        name: str
-    ):
+    async def manga(self, interaction: discord.Interaction, name: str):
 
         try:
 
@@ -34,24 +30,22 @@ class Manga(commands.Cog):
             )
 
             embed.add_field(
-                name="Title",
+                name="Manga Title",
                 value=title,
                 inline=False
             )
 
             if alt_names:
 
-                names_text = "\n".join(alt_names)[:1000]
+                text = "\n".join(alt_names)[:1000]
 
                 embed.add_field(
                     name="Associated Names",
-                    value=names_text,
+                    value=text,
                     inline=False
                 )
 
-            await interaction.response.send_message(
-                embed=embed
-            )
+            await interaction.response.send_message(embed=embed)
 
         except Exception as e:
 
