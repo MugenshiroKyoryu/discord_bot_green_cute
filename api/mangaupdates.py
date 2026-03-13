@@ -21,12 +21,18 @@ async def search_manga(name: str):
             }
         ) as resp:
 
+            if resp.status != 200:
+                raise Exception(f"Search API error : {resp.status}")
+
             data = await resp.json()
 
             print("SEARCH RESULT:", data)
 
+            if "results" not in data:
+                raise Exception("API response ไม่มี field results")
+
             if not data["results"]:
-                return None
+                raise Exception("ไม่พบมังงะ")
 
             series_id = data["results"][0]["record"]["series_id"]
 
@@ -34,10 +40,13 @@ async def search_manga(name: str):
             f"{SERIES_URL}/{series_id}"
         ) as resp:
 
+            if resp.status != 200:
+                raise Exception(f"Series API error : {resp.status}")
+
             series = await resp.json()
 
         result = {
-            "title": series["title"],
+            "title": series.get("title", "Unknown"),
             "associated_names": series.get("associated_names", [])
         }
 
