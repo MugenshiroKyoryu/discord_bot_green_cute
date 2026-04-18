@@ -4,7 +4,7 @@ SEARCH_URL = "https://api.mangaupdates.com/v1/series/search"
 SERIES_URL = "https://api.mangaupdates.com/v1/series"
 
 
-async def search_manga(name: str):
+async def search_novel(name: str):
 
     async with aiohttp.ClientSession() as session:
 
@@ -27,20 +27,20 @@ async def search_manga(name: str):
             data = await resp.json()
 
             if not data["results"]:
-                raise Exception("ไม่พบมังงะ")
+                raise Exception("ไม่พบนิยาย")
 
-            # ✅ filter เฉพาะ Manga
+            # ✅ filter เฉพาะ Novel
             series_id = None
 
             for item in data["results"]:
                 record = item["record"]
 
-                if record.get("type") == "Manga":
+                if record.get("type") and "Novel" in record.get("type"):
                     series_id = record["series_id"]
                     break
 
             if not series_id:
-                raise Exception("ไม่พบมังงะ (เจอแต่ประเภทอื่น)")
+                raise Exception("ไม่พบนิยาย (เจอแต่ประเภทอื่น)")
 
         async with session.get(
             f"{SERIES_URL}/{series_id}"
@@ -51,22 +51,19 @@ async def search_manga(name: str):
 
             series = await resp.json()
 
-        # ✅ Associated names (safe)
         associated_names = [
             a["title"] for a in series.get("associated", []) if "title" in a
         ]
 
-        # Anime info
         anime_data = series.get("anime", {})
         anime_start = anime_data.get("start", "Unknown")
         anime_end = anime_data.get("end", "Unknown")
 
-        # ✅ Image safe
         image_url = None
         if "image" in series and series["image"]:
             image_url = series["image"]["url"].get("original")
 
-        result = {
+        return {
             "title": series.get("title", "Unknown"),
             "url": series.get("url"),
             "status": series.get("status", "Unknown"),
@@ -77,5 +74,3 @@ async def search_manga(name: str):
             },
             "image": image_url
         }
-
-        return result

@@ -2,31 +2,31 @@ from discord.ext import commands
 from discord import app_commands
 import discord
 
-from api.mangaupdates import search_manga
+from api.novelupdates import search_novel  # ✅ เปลี่ยน
 
 
-class Manga(commands.Cog):
+class Novel(commands.Cog):  # ✅ เปลี่ยนชื่อ class
 
     def __init__(self, bot):
         self.bot = bot
 
 
     @app_commands.command(
-        name="manga",
-        description="ค้นหาชื่อมังงะ"
+        name="novel",  # ✅ เปลี่ยน command
+        description="ค้นหานิยาย"
     )
-    async def manga(self, interaction: discord.Interaction, name: str):
+    async def novel(self, interaction: discord.Interaction, name: str):
 
         try:
 
-            manga = await search_manga(name)
+            novel = await search_novel(name)  # ✅ เปลี่ยน function
 
-            title = manga["title"]
-            alt_names = manga["associated_names"]   # <-- เป็น list[str] แล้ว
-            url = manga["url"]
-            status = manga["status"]
-            image = manga["image"]
-            anime = manga.get("anime", {})
+            title = novel["title"]
+            alt_names = novel["associated_names"]
+            url = novel["url"]
+            status = novel["status"]
+            image = novel["image"]
+            anime = novel.get("anime", {})
 
             anime_start = anime.get("start", "Unknown")
             anime_end = anime.get("end", "Unknown")
@@ -38,24 +38,20 @@ class Manga(commands.Cog):
             )
 
             if image:
-                embed.set_thumbnail(url=image)  # ขวา
-                
+                embed.set_thumbnail(url=image)
 
-            # สถานะ
             embed.add_field(
                 name="สถานะ",
                 value=status,
                 inline=False
             )
 
-            # Anime Start/End
             embed.add_field(
                 name="อนิเมะ Start/End Chapter",
                 value=f"{anime_start}\n{anime_end}",
                 inline=False
             )
 
-            # ชื่อที่เกี่ยวข้อง (ไม่มีภาษาแล้ว)
             if alt_names:
 
                 text = "\n".join(alt_names)
@@ -80,4 +76,4 @@ class Manga(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(Manga(bot))
+    await bot.add_cog(Novel(bot))  # ✅ เปลี่ยน class
