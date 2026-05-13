@@ -1,3 +1,4 @@
+import asyncio
 import aiohttp
 
 SEARCH_URL = "https://api.mangaupdates.com/v1/series/search"
@@ -68,9 +69,8 @@ async def search_novel(name: str) -> list[dict]:
             if not matched:
                 raise Exception("ไม่พบนิยาย (เจอแต่ประเภทอื่น)")
 
-        results = []
-        for series_id in matched:
-            detail = await fetch_series_detail(session, series_id)
-            results.append(detail)
+        results = await asyncio.gather(*[
+            fetch_series_detail(session, sid) for sid in matched
+        ])
 
-        return results
+        return list(results)

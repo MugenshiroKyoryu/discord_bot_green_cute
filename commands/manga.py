@@ -19,17 +19,19 @@ class Manga(commands.Cog):
 
         try:
 
+            await interaction.response.defer()
+
             results = await search_manga(name)
             view = SeriesView(results)
 
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 embed=view.current_embed(),
                 view=view
             )
 
         except Exception as e:
 
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"ERROR : {str(e)}",
                 ephemeral=True
             )

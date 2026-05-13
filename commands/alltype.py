@@ -19,17 +19,19 @@ class Series(commands.Cog):
 
         try:
 
+            await interaction.response.defer()
+
             results = await search_Series(name)
             view = SeriesView(results, show_type=True)
 
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 embed=view.current_embed(),
                 view=view
             )
 
         except Exception as e:
 
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"ERROR : {str(e)}",
                 ephemeral=True
             )
