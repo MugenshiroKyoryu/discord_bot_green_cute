@@ -4,7 +4,7 @@ SEARCH_URL = "https://api.mangaupdates.com/v1/series/search"
 SERIES_URL = "https://api.mangaupdates.com/v1/series"
 
 
-async def search_novel(name: str):
+async def search_Manhwa(name: str):
 
     async with aiohttp.ClientSession() as session:
 
@@ -27,20 +27,19 @@ async def search_novel(name: str):
             data = await resp.json()
 
             if not data["results"]:
-                raise Exception("ไม่พบนิยาย")
+                raise Exception("ไม่พบผลลัพธ์")
 
-            # ✅ filter เฉพาะ Novel
             series_id = None
 
             for item in data["results"]:
                 record = item["record"]
 
-                if record.get("type") == "Novel":
+                if record.get("type") == "Manhwa":
                     series_id = record["series_id"]
                     break
 
             if not series_id:
-                raise Exception("ไม่พบนิยาย (เจอแต่ประเภทอื่น)")
+                raise Exception("ไม่พบมังฮวา (เจอแต่ประเภทอื่น)")
 
         async with session.get(
             f"{SERIES_URL}/{series_id}"
