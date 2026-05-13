@@ -3,13 +3,13 @@ from discord import app_commands
 import discord
 
 from api.mangaupdates import search_manga
+from utils.series_view import SeriesView
 
 
 class Manga(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-
 
     @app_commands.command(
         name="manga",
@@ -19,62 +19,18 @@ class Manga(commands.Cog):
 
         try:
 
-            manga = await search_manga(name)
+            results = await search_manga(name)
+            view = SeriesView(results)
 
-            title = manga["title"]
-            alt_names = manga["associated_names"]   # <-- เป็น list[str] แล้ว
-            url = manga["url"]
-            status = manga["status"]
-            image = manga["image"]
-            anime = manga.get("anime", {})
-
-            anime_start = anime.get("start", "Unknown")
-            anime_end = anime.get("end", "Unknown")
-
-            embed = discord.Embed(
-                title=title,
-                url=url,
-                color=0x2b2d31
+            await interaction.response.send_message(
+                embed=view.current_embed(),
+                view=view
             )
-
-            if image:
-                embed.set_thumbnail(url=image)  # ขวา
-                
-
-            # สถานะ
-            embed.add_field(
-                name="สถานะ",
-                value=status,
-                inline=False
-            )
-
-            # Anime Start/End
-            embed.add_field(
-                name="อนิเมะ Start/End Chapter",
-                value=f"{anime_start}\n{anime_end}",
-                inline=False
-            )
-
-            # ชื่อที่เกี่ยวข้อง (ไม่มีภาษาแล้ว)
-            if alt_names:
-
-                text = "\n".join(alt_names)
-
-                if len(text) > 1024:
-                    text = text[:1020] + "..."
-
-                embed.add_field(
-                    name="ชื่อที่เกี่ยวข้อง",
-                    value=text,
-                    inline=False
-                )
-
-            await interaction.response.send_message(embed=embed)
 
         except Exception as e:
 
             await interaction.response.send_message(
-                f"❌ ERROR : {str(e)}",
+                f"ERROR : {str(e)}",
                 ephemeral=True
             )
 
