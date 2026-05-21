@@ -24,10 +24,11 @@ class Novel(commands.Cog):
             results = await search_novel(name)
             view = SeriesView(results)
 
-            await interaction.followup.send(
+            msg = await interaction.followup.send(
                 embed=view.current_embed(),
                 view=view
             )
+            view.message = msg
 
         except Exception as e:
 

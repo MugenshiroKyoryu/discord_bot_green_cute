@@ -24,10 +24,11 @@ class Manhwa(commands.Cog):
             results = await search_Manhwa(name)
             view = SeriesView(results)
 
-            await interaction.followup.send(
+            msg = await interaction.followup.send(
                 embed=view.current_embed(),
                 view=view
             )
+            view.message = msg
 
         except Exception as e:
 

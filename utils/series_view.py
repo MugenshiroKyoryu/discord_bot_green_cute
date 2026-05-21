@@ -62,6 +62,7 @@ class SeriesView(discord.ui.View):
         self.results = results
         self.index = 0
         self.show_type = show_type
+        self.message: discord.Message | None = None
         self._update_buttons()
 
     def _update_buttons(self):
@@ -70,6 +71,15 @@ class SeriesView(discord.ui.View):
 
     def current_embed(self) -> discord.Embed:
         return build_embed(self.results[self.index], self.index, len(self.results), self.show_type)
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+        if self.message:
+            try:
+                await self.message.edit(view=self)
+            except discord.NotFound:
+                pass
 
     @discord.ui.button(label="ก่อนหน้า", style=discord.ButtonStyle.secondary)
     async def prev_button(self, interaction: discord.Interaction, button: discord.ui.Button):
