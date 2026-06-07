@@ -1,79 +1,12 @@
-import asyncio
-import aiohttp
-
-SEARCH_URL = "https://api.mangaupdates.com/v1/series/search"
-SERIES_URL = "https://api.mangaupdates.com/v1/series"
+from api._client import search_series
 
 ALLOWED_TYPES = {"Manhwa", "Manga", "Manhua", "Novel"}
 
 
-async def fetch_series_detail(session: aiohttp.ClientSession, series_id: int) -> dict:
-
-    async with session.get(f"{SERIES_URL}/{series_id}") as resp:
-
-        if resp.status != 200:
-            raise Exception(f"Series API error : {resp.status}")
-
-        series = await resp.json()
-
-    associated_names = [
-        a["title"] for a in series.get("associated", []) if "title" in a
-    ]
-
-    anime_data = series.get("anime", {})
-
-    image_url = None
-    if "image" in series and series["image"]:
-        image_url = series["image"]["url"].get("original")
-
-    return {
-        "title": series.get("title", "Unknown"),
-        "url": series.get("url"),
-        "status": series.get("status", "Unknown"),
-        "type": series.get("type", "Unknown"),
-        "associated_names": associated_names,
-        "anime": {
-            "start": anime_data.get("start", "Unknown"),
-            "end": anime_data.get("end", "Unknown")
-        },
-        "image": image_url
-    }
-
-
 async def search_Series(name: str) -> list[dict]:
-
-    async with aiohttp.ClientSession() as session:
-
-        payload = {"search": name}
-
-        async with session.post(
-            SEARCH_URL,
-            json=payload,
-            headers={
-                "Content-Type": "application/json",
-                "User-Agent": "GreenCuteBot"
-            }
-        ) as resp:
-
-            if resp.status != 200:
-                raise Exception(f"Search API error : {resp.status}")
-
-            data = await resp.json()
-
-            if not data["results"]:
-                raise Exception("ไม่พบผลลัพธ์")
-
-            matched = [
-                item["record"]["series_id"]
-                for item in data["results"]
-                if item["record"].get("type", "") in ALLOWED_TYPES
-            ]
-
-            if not matched:
-                raise Exception("ไม่พบ Manga / Manhwa / Manhua / Novel ที่ตรงกัน")
-
-        results = await asyncio.gather(*[
-            fetch_series_detail(session, sid) for sid in matched
-        ])
-
-        return list(results)
+    return await search_series(
+        name,
+        allowed_types=ALLOWED_TYPES,
+        no_results_msg="ไม่พบผลลัพธ์",
+        no_match_msg="ไม่พบ Manga / Manhwa / Manhua / Novel ที่ตรงกัน"
+    )

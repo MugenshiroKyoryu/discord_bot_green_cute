@@ -1,0 +1,277 @@
+# Discord Manga/Manhwa/Novel Search Bot
+
+บอท Discord สำหรับค้นหาข้อมูล **Manga / Manhwa / Manhua / Novel** ผ่าน [MangaUpdates API](https://api.mangaupdates.com/) แสดงผลเป็น embed พร้อมปุ่มเลื่อนดูผลลัพธ์ทีละรายการ พัฒนาด้วย [discord.py](https://discordpy.readthedocs.io/) และใช้ Slash Commands ทั้งหมด
+
+## สารบัญ
+
+- [ฟีเจอร์](#ฟีเจอร์)
+- [คำสั่ง (Slash Commands)](#คำสั่ง-slash-commands)
+- [วิธีการทำงาน](#วิธีการทำงาน)
+- [ข้อมูลที่แสดงใน Embed](#ข้อมูลที่แสดงใน-embed)
+- [การเลื่อนดูผลลัพธ์](#การเลื่อนดูผลลัพธ์)
+- [MangaUpdates API](#mangaupdates-api)
+- [โครงสร้างโปรเจค](#โครงสร้างโปรเจค)
+- [การติดตั้ง](#การติดตั้ง)
+- [การใช้งาน](#การใช้งาน)
+- [การ Deploy / Keep-Alive](#การ-deploy--keep-alive)
+- [การเพิ่มคำสั่งใหม่](#การเพิ่มคำสั่งใหม่)
+- [ข้อความ Error](#ข้อความ-error)
+- [การแก้ปัญหา (Troubleshooting)](#การแก้ปัญหา-troubleshooting)
+- [Dependencies หลัก](#dependencies-หลัก)
+- [License](#license)
+
+## ฟีเจอร์
+
+- ค้นหาซีรีส์ด้วย Slash Commands (มี autocomplete ของ Discord ในตัว)
+- กรองตามประเภท (Manga / Manhwa / Manhua / Novel) หรือค้นหารวมทุกประเภทด้วย `/series`
+- แสดงผลแบบ embed: ชื่อเรื่อง (ลิงก์ไปหน้า MangaUpdates), สถานะ, ข้อมูลอนิเมะ, ชื่อที่เกี่ยวข้อง และรูปปก
+- ปุ่ม **ก่อนหน้า / ถัดไป** สำหรับเลื่อนดูผลลัพธ์หลายรายการ (หมดเวลาใช้งานปุ่มใน 120 วินาที)
+- ดึงรายละเอียดหลายเรื่องพร้อมกันแบบ async (`asyncio.gather`) จึงตอบเร็วแม้เจอผลลัพธ์จำนวนมาก โดยจำกัดจำนวนคำขอพร้อมกัน (สูงสุด 5) + มี timeout 15 วินาที และ retry อัตโนมัติเมื่อโดน rate limit (HTTP 429)
+- เลเยอร์เรียก API ใช้โค้ดกลางร่วมกันที่ `api/_client.py` แต่ละประเภทเป็นเพียง wrapper บางๆ
+- มี Flask keep-alive server ในตัว (พอร์ต 8080) สำหรับ host บนบริการที่ต้องการ HTTP endpoint
+
+## คำสั่ง (Slash Commands)
+
+| คำสั่ง | รายละเอียด | กรองประเภท |
+|--------|------------|------------|
+| `/manga <name>` | ค้นหามังงะ | `Manga` |
+| `/manhwa <name>` | ค้นหามังฮวา | `Manhwa` |
+| `/manhua <name>` | ค้นหามันฮัว | `Manhua` |
+| `/novel <name>` | ค้นหานิยาย | `Novel` |
+| `/series <name>` | ค้นหารวมทุกประเภท (แสดงฟิลด์ "ประเภท" เพิ่ม) | `Manhwa`, `Manga`, `Manhua`, `Novel` |
+
+ทุกคำสั่งรับพารามิเตอร์ `name` (ข้อความ) เป็นคำค้นหา
+
+## วิธีการทำงาน
+
+ลำดับการทำงานเมื่อผู้ใช้เรียกคำสั่ง (เช่น `/manga`):
+
+```
+ผู้ใช้พิมพ์ /manga <name>
+        │
+        ▼
+interaction.response.defer()          # ตอบ Discord ทันทีว่ากำลังประมวลผล (กันหมดเวลา 3 วิ)
+        │
+        ▼
+search_manga(name)  ── POST /v1/series/search ──► กรอง series_id ที่ type == "Manga"
+        │
+        ▼
+asyncio.gather(...)  ── GET /v1/series/{id} หลายตัวพร้อมกัน (จำกัด 5 พร้อมกัน) ──► รายละเอียดแต่ละเรื่อง
+        │
+        ▼
+SeriesView(results)                   # สร้าง View + embed หน้าแรก
+        │
+        ▼
+interaction.followup.send(embed, view)  # ส่งผลลัพธ์ให้ผู้ใช้
+```
+
+- แต่ละ command อยู่ในรูป **Cog** (`commands/*.py`) และถูกโหลดอัตโนมัติตอนบอทเริ่มทำงาน
+- เลเยอร์เรียก API แยกอยู่ใน `api/*.py` โดยใช้โค้ดกลางร่วมกันที่ `api/_client.py` (จัดการ search + fetch รายละเอียด + timeout/retry/จำกัด concurrency) ส่วนการสร้าง embed/ปุ่มอยู่ใน `utils/series_view.py` — แยกหน้าที่กันชัดเจน
+- หากเกิดข้อผิดพลาด cog จะส่งข้อความ error แบบ **ephemeral** (เห็นเฉพาะผู้เรียกคำสั่ง)
+
+## ข้อมูลที่แสดงใน Embed
+
+embed สร้างจาก `build_embed()` ใน `utils/series_view.py`:
+
+| ฟิลด์ | ที่มาของข้อมูล | หมายเหตุ |
+|-------|----------------|----------|
+| ชื่อเรื่อง (title) | `title` + `url` | คลิกได้ ลิงก์ไปหน้า MangaUpdates |
+| รูปปก (thumbnail) | `image` | แสดงเมื่อมีรูปเท่านั้น |
+| ประเภท | `type` | แสดงเฉพาะคำสั่ง `/series` |
+| สถานะ | `status` | เช่น Ongoing / Complete |
+| อนิเมะ Start/End Chapter | `anime.start`, `anime.end` | ตอนเริ่ม/จบของฉบับอนิเมะ |
+| ชื่อที่เกี่ยวข้อง | `associated_names` | ตัดข้อความที่ 1024 ตัวอักษร แล้วต่อท้ายด้วย `...` |
+| เลขหน้า (footer) | `index / total` | บอกว่ากำลังดูผลลัพธ์ที่เท่าไรจากทั้งหมด |
+
+## การเลื่อนดูผลลัพธ์
+
+จัดการโดยคลาส `SeriesView` (`utils/series_view.py`):
+
+- ปุ่ม **ก่อนหน้า** / **ถัดไป** เลื่อนดูผลลัพธ์ทีละรายการ
+- ปุ่ม "ก่อนหน้า" จะถูกปิดเมื่ออยู่หน้าแรก และ "ถัดไป" ปิดเมื่ออยู่หน้าสุดท้าย
+- `timeout = 120` วินาที — ครบเวลาแล้วปุ่มทั้งหมดจะถูกปิด (disable) อัตโนมัติ
+- การกดปุ่มใช้ `interaction.response.edit_message` แก้ไข embed เดิมในที่เดิม ไม่ส่งข้อความใหม่
+
+## MangaUpdates API
+
+บอทเรียก [MangaUpdates API v1](https://api.mangaupdates.com/) (ไม่ต้องใช้ API key สำหรับการค้นหา):
+
+| Endpoint | Method | หน้าที่ |
+|----------|--------|---------|
+| `/v1/series/search` | `POST` | ค้นหาด้วย `{"search": name}` คืน series_id |
+| `/v1/series/{id}` | `GET` | ดึงรายละเอียดของซีรีส์รายตัว |
+
+- ทุกคำขอส่ง header `User-Agent: GreenCuteBot`
+- หลังค้นหาจะกรองผลตาม `type` ของแต่ละคำสั่ง แล้วดึงรายละเอียดที่ตรงเงื่อนไขเท่านั้น
+- การเรียกทั้งหมดผ่าน `api/_client.py` ซึ่งมี timeout 15 วินาที, จำกัดคำขอรายละเอียดพร้อมกันสูงสุด 5 ตัว และ retry อัตโนมัติเมื่อเจอ HTTP 429 (อ่านค่า `Retry-After` ถ้ามี)
+
+## โครงสร้างโปรเจค
+
+```
+botdiscord/
+├── main.py              # จุดเริ่มต้นบอท โหลด cog และ sync slash commands
+├── myserver.py          # Flask keep-alive server (พอร์ต 8080)
+├── commands/            # Slash command cogs
+│   ├── manga.py
+│   ├── manhwa.py
+│   ├── manhua.py
+│   ├── novel.py
+│   └── alltype.py       # คำสั่ง /series
+├── api/                 # ตัวเรียก MangaUpdates API
+│   ├── _client.py       # โค้ดกลาง: search + fetch รายละเอียด + timeout/retry/จำกัด concurrency
+│   ├── mangaupdates.py
+│   ├── manhwaupdates.py
+│   ├── manhuaupdates.py
+│   ├── novelupdates.py
+│   └── alltypeupdates.py
+├── utils/
+│   └── series_view.py   # สร้าง embed และ View ปุ่มเลื่อนหน้า
+├── requirements.txt
+└── .env                 # เก็บ DISCORD_TOKEN (ไม่ commit)
+```
+
+## การติดตั้ง
+
+ต้องใช้ **Python 3.10+** (โค้ดใช้ type hint แบบ `list[dict]` และ `discord.Message | None`)
+
+1. โคลนโปรเจคและสร้าง virtual environment
+
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\activate      # Windows
+   # source .venv/bin/activate # macOS / Linux
+   ```
+
+2. ติดตั้ง dependencies
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. สร้างไฟล์ `.env` ที่ root ของโปรเจค แล้วใส่โทเคนของบอท
+
+   ```env
+   DISCORD_TOKEN=your_bot_token_here
+   ```
+
+## การใช้งาน
+
+```bash
+python main.py
+```
+
+เมื่อบอทออนไลน์จะ sync slash commands อัตโนมัติ และพิมพ์ข้อความใน console:
+
+```
+================================
+Bot : YourBot#1234
+Bot is ready
+Synced 5 commands
+================================
+```
+
+จากนั้นเรียกใช้คำสั่งเช่น `/manga` ในเซิร์ฟเวอร์ Discord ได้เลย
+
+> **หมายเหตุ:** บอทเปิด `message_content` intent — ต้องเปิด intent นี้ใน [Discord Developer Portal](https://discord.com/developers/applications) ของบอทด้วย (Bot → Privileged Gateway Intents → Message Content Intent)
+
+## การ Deploy / Keep-Alive
+
+`myserver.py` รัน Flask server ที่ `0.0.0.0:8080` ใน thread แยก โดย `server_on()` ถูกเรียกใน `main()` ก่อนบอทเริ่มทำงาน:
+
+- มี route `/` ที่ตอบ `"Server is running!"` ไว้สำหรับให้บริการ host ตรวจสอบสถานะ
+- เหมาะกับการ host บนแพลตฟอร์มที่ปิด process เมื่อไม่มี HTTP traffic (เช่น Replit) โดยตั้ง uptime pinger (เช่น UptimeRobot) ยิงเข้ามาที่พอร์ตนี้เป็นระยะเพื่อให้บอทออนไลน์ตลอด
+- ถ้า host บนเครื่องตัวเองหรือ VPS ไม่จำเป็นต้องใช้ keep-alive แต่ปล่อยไว้ก็ไม่กระทบการทำงาน
+
+## การเพิ่มคำสั่งใหม่
+
+`main.py` โหลดทุกไฟล์ `.py` ใน `./commands` อัตโนมัติ ([main.py:38-46](main.py)) ดังนั้นการเพิ่มคำสั่งใหม่ทำได้โดย:
+
+1. สร้างตัวเรียก API ใน `api/yourtypeupdates.py` เป็น wrapper บางๆ ที่เรียก `search_series()` จาก `api/_client.py` (ลอกรูปแบบจาก `api/mangaupdates.py`):
+
+   ```python
+   from api._client import search_series
+
+
+   async def search_yourtype(name: str) -> list[dict]:
+       return await search_series(
+           name,
+           allowed_types={"YourType"},          # ค่า type ใน MangaUpdates API
+           no_results_msg="ไม่พบผลลัพธ์",
+           no_match_msg="ไม่พบ ... (เจอแต่ประเภทอื่น)"
+       )
+   ```
+
+2. สร้าง cog ใน `commands/yourtype.py` ตามแม่แบบนี้:
+
+   ```python
+   from discord.ext import commands
+   from discord import app_commands
+   import discord
+
+   from api.yourtypeupdates import search_yourtype
+   from utils.series_view import SeriesView
+
+
+   class YourType(commands.Cog):
+       def __init__(self, bot):
+           self.bot = bot
+
+       @app_commands.command(name="yourtype", description="คำอธิบาย")
+       async def yourtype(self, interaction: discord.Interaction, name: str):
+           try:
+               await interaction.response.defer()
+               results = await search_yourtype(name)
+               view = SeriesView(results)
+               msg = await interaction.followup.send(embed=view.current_embed(), view=view)
+               view.message = msg
+           except Exception as e:
+               await interaction.followup.send(f"ERROR : {str(e)}", ephemeral=True)
+
+
+   async def setup(bot):
+       await bot.add_cog(YourType(bot))
+   ```
+
+3. รีสตาร์ตบอท — คำสั่งจะถูกโหลดและ sync ให้อัตโนมัติ
+
+> ถ้าต้องการให้คำสั่งแสดงฟิลด์ "ประเภท" ในผลลัพธ์ (แบบ `/series`) ให้ส่ง `SeriesView(results, show_type=True)`
+
+## ข้อความ Error
+
+แต่ละตัวเรียก API จะ raise ข้อความเมื่อเกิดปัญหา และ cog จะส่งให้ผู้ใช้แบบ ephemeral ในรูป `ERROR : <ข้อความ>`:
+
+| สถานการณ์ | ข้อความ |
+|-----------|---------|
+| ค้นหาแล้ว API ตอบไม่สำเร็จ | `Search API error : <status>` |
+| ดึงรายละเอียดไม่สำเร็จ | `Series API error : <status>` |
+| โดน rate limit จน retry ครบแล้ว | `Search API error : 429` / `Series API error : 429` |
+| ไม่พบผลลัพธ์เลย (`/manga`) | `ไม่พบมังงะ` |
+| เจอผลแต่ไม่มีประเภทที่ต้องการ (`/manga`) | `ไม่พบมังงะ (เจอแต่ประเภทอื่น)` |
+| ไม่พบผลลัพธ์ (`/manhwa`) | `ไม่พบผลลัพธ์` / `ไม่พบมังฮวา (เจอแต่ประเภทอื่น)` |
+| ไม่พบผลลัพธ์ (`/manhua`) | `ไม่พบผลลัพธ์` / `ไม่พบมันฮัว (เจอแต่ประเภทอื่น)` |
+| ไม่พบผลลัพธ์ (`/novel`) | `ไม่พบนิยาย` / `ไม่พบนิยาย (เจอแต่ประเภทอื่น)` |
+| ไม่พบผลลัพธ์ (`/series`) | `ไม่พบ Manga / Manhwa / Manhua / Novel ที่ตรงกัน` |
+
+## การแก้ปัญหา (Troubleshooting)
+
+| อาการ | สาเหตุที่พบบ่อย | วิธีแก้ |
+|-------|----------------|--------|
+| `404 Not Found (error code: 10062): Unknown interaction` | ไม่ได้ `defer()` ภายใน 3 วินาที หรือ interaction หมดอายุ | ต้องเรียก `interaction.response.defer()` เป็นสิ่งแรกในคำสั่ง แล้วใช้ `interaction.followup.send()` ส่งผลลัพธ์ (โครงสร้างปัจจุบันทำถูกแล้ว) |
+| Slash command ไม่ขึ้นใน Discord | ยังไม่ sync เสร็จ หรือเพิ่งเชิญบอทเข้าเซิร์ฟเวอร์ | รอ sync (global commands อาจใช้เวลาแพร่สักครู่) และตรวจว่า console พิมพ์ `Synced N commands` |
+| บอทไม่ออนไลน์ / token error | `DISCORD_TOKEN` ใน `.env` ผิดหรือไม่มี | ตรวจไฟล์ `.env` และค่าโทเคนใน Developer Portal |
+| คำสั่งใช้งานไม่ได้บางอย่าง | ไม่ได้เปิด Message Content Intent | เปิด intent ใน Developer Portal |
+| คำสั่ง error เป็น `... API error : 429` บ่อย | โดน rate limit ของ MangaUpdates | บอท retry ให้อัตโนมัติแล้ว ถ้ายังเจอบ่อยให้ลดความถี่การเรียก หรือลองใหม่ภายหลัง |
+| ปุ่มกดไม่ตอบสนอง | ผ่านไปเกิน 120 วินาที (timeout) | เรียกคำสั่งใหม่อีกครั้ง |
+
+## Dependencies หลัก
+
+- [discord.py](https://discordpy.readthedocs.io/) `2.7.1` — ไลบรารีหลักของบอท
+- [aiohttp](https://docs.aiohttp.org/) — เรียก MangaUpdates API แบบ async
+- [Flask](https://flask.palletsprojects.com/) — keep-alive server
+- [python-dotenv](https://pypi.org/project/python-dotenv/) — โหลดค่าจากไฟล์ `.env`
+
+รายการเต็มดูได้ที่ [requirements.txt](requirements.txt)
+
+## License
+
+ดูรายละเอียดในไฟล์ [LICENSE](LICENSE)
