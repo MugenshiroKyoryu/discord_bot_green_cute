@@ -16,23 +16,34 @@ _TIMEOUT = aiohttp.ClientTimeout(total=15)
 _MAX_CONCURRENT = 5
 _MAX_RETRIES = 3
 
+# status ที่เป็นปัญหาชั่วคราว ลองใหม่ได้
+_RETRY_STATUSES = {429, 500, 502, 503, 504}
+
 
 async def _request_json(session, method, url, *, json_payload=None, error_label="API"):
 
     for attempt in range(_MAX_RETRIES):
 
-        async with session.request(method, url, json=json_payload) as resp:
+        try:
+            async with session.request(method, url, json=json_payload) as resp:
 
-            if resp.status == 429 and attempt < _MAX_RETRIES - 1:
-                retry_after = resp.headers.get("Retry-After")
-                delay = float(retry_after) if retry_after else 2 ** attempt
-                await asyncio.sleep(min(delay, 5))
+                if resp.status in _RETRY_STATUSES and attempt < _MAX_RETRIES - 1:
+                    retry_after = resp.headers.get("Retry-After")
+                    delay = float(retry_after) if retry_after else 2 ** attempt
+                    await asyncio.sleep(min(delay, 5))
+                    continue
+
+                if resp.status != 200:
+                    raise Exception(f"{error_label} error : {resp.status}")
+
+                return await resp.json()
+
+        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+            # ปัญหา network/timeout ชั่วคราว ลองใหม่ก่อนค่อยยอมแพ้
+            if attempt < _MAX_RETRIES - 1:
+                await asyncio.sleep(2 ** attempt)
                 continue
-
-            if resp.status != 200:
-                raise Exception(f"{error_label} error : {resp.status}")
-
-            return await resp.json()
+            raise Exception(f"{error_label} error : {e}") from e
 
     raise Exception(f"{error_label} error : 429")
 
@@ -63,15 +74,16 @@ async def fetch_series_detail(
     image = series.get("image") or {}
     image_url = (image.get("url") or {}).get("original")
 
+    # ใช้ or แทน default ของ .get เพราะ API อาจส่ง null มาทั้งที่มี key
     return {
-        "title": series.get("title", "Unknown"),
+        "title": series.get("title") or "Unknown",
         "url": series.get("url"),
-        "status": series.get("status", "Unknown"),
-        "type": series.get("type", "Unknown"),
+        "status": series.get("status") or "Unknown",
+        "type": series.get("type") or "Unknown",
         "associated_names": associated_names,
         "anime": {
-            "start": anime_data.get("start", "Unknown"),
-            "end": anime_data.get("end", "Unknown")
+            "start": anime_data.get("start") or "Unknown",
+            "end": anime_data.get("end") or "Unknown"
         },
         "image": image_url
     }
@@ -86,16 +98,16 @@ async def search_series(
 
     async with aiohttp.ClientSession(headers=_HEADERS, timeout=_TIMEOUT) as session:
 
+        # กรองประเภทตั้งแต่ฝั่ง server จะได้ไม่ยิง detail ของประเภทที่ไม่เอา
         data = await _request_json(
             session, "post", SEARCH_URL,
-            json_payload={"search": name}, error_label="Search API"
+            json_payload={"search": name, "type": sorted(allowed_types)},
+            error_label="Search API"
         )
 
         results = data.get("results") or []
 
-        if not results:
-            raise Exception(no_results_msg)
-
+        # กรองซ้ำฝั่ง client กันกรณี server filter ส่งประเภทอื่นปนมา
         matched = [
             item["record"]["series_id"]
             for item in results
@@ -103,12 +115,28 @@ async def search_series(
         ]
 
         if not matched:
+            # ค้นแบบไม่กรองอีกครั้ง เพื่อแยกว่าไม่พบเลย หรือเจอแต่ประเภทอื่น
+            plain = await _request_json(
+                session, "post", SEARCH_URL,
+                json_payload={"search": name}, error_label="Search API"
+            )
+
+            if not (plain.get("results") or []):
+                raise Exception(no_results_msg)
+
             raise Exception(no_match_msg)
 
         semaphore = asyncio.Semaphore(_MAX_CONCURRENT)
 
-        details = await asyncio.gather(*[
-            fetch_series_detail(session, sid, semaphore) for sid in matched
-        ])
+        outcomes = await asyncio.gather(
+            *[fetch_series_detail(session, sid, semaphore) for sid in matched],
+            return_exceptions=True
+        )
 
-        return list(details)
+        # ข้ามเรื่องที่ดึงรายละเอียดไม่สำเร็จ แสดงเท่าที่ได้
+        details = [d for d in outcomes if not isinstance(d, BaseException)]
+
+        if not details:
+            raise next(e for e in outcomes if isinstance(e, BaseException))
+
+        return details
