@@ -1,5 +1,7 @@
 import discord
 
+from utils._names import format_alt_names
+
 
 def build_embed(data: dict, index: int, total: int, show_type: bool = False) -> discord.Embed:
 
@@ -58,10 +60,10 @@ def build_embed(data: dict, index: int, total: int, show_type: bool = False) -> 
         inline=False
     )
 
-    if alt_names:
-        text = "\n".join(alt_names)
-        if len(text) > 1024:
-            text = text[:1020] + "..."
+    # ต้องผ่าน format_alt_names ก่อนเสมอ ต่อเองด้วย "\n" แล้วชื่อภาษาที่เขียน
+    # ขวาไปซ้ายจะดึงทั้งบรรทัดไปชิดขวา เหลือช่องว่างยาวคั่นกลางรายการ
+    text = format_alt_names(alt_names)
+    if text:
         embed.add_field(
             name="ชื่อที่เกี่ยวข้อง",
             value=text,
