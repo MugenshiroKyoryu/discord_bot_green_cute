@@ -1,5 +1,6 @@
 import discord
 
+from utils._anime import format_anime_chapters
 from utils._names import format_alt_names
 
 
@@ -10,9 +11,7 @@ def build_embed(data: dict, index: int, total: int, show_type: bool = False) -> 
     status = data["status"]
     image = data["image"]
     alt_names = data["associated_names"]
-    anime = data.get("anime", {})
-    anime_start = anime.get("start", "Unknown")
-    anime_end = anime.get("end", "Unknown")
+    anime = data.get("anime") or {}
     total_hits = data.get("total_hits")
     relation = data.get("relation")
 
@@ -54,11 +53,16 @@ def build_embed(data: dict, index: int, total: int, show_type: bool = False) -> 
         inline=True
     )
 
-    embed.add_field(
-        name="อนิเมะ Start/End Chapter",
-        value=f"{anime_start}\n{anime_end}",
-        inline=False
-    )
+    # ต้องผ่าน format_anime_chapters ก่อนเสมอ ต้นทางจัดเป็น "เริ่มทั้งหมด"
+    # กับ "จบทั้งหมด" เอามาต่อกันดิบ ๆ จะไม่มีอะไรบอกว่าบรรทัดไหนคืออะไร
+    # และซีซั่นที่ยังไม่จบทำให้สองบรรทัดมีรายการไม่เท่ากันจนจับคู่ไม่ได้
+    anime_text = format_anime_chapters(anime.get("start"), anime.get("end"))
+    if anime_text:
+        embed.add_field(
+            name="อนิเมะ (ตอนที่ถูกดัดแปลง)",
+            value=anime_text,
+            inline=False
+        )
 
     # ต้องผ่าน format_alt_names ก่อนเสมอ ต่อเองด้วย "\n" แล้วชื่อภาษาที่เขียน
     # ขวาไปซ้ายจะดึงทั้งบรรทัดไปชิดขวา เหลือช่องว่างยาวคั่นกลางรายการ
