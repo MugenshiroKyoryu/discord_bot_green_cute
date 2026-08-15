@@ -11,6 +11,8 @@ def build_embed(data: dict, index: int, total: int, show_type: bool = False) -> 
     anime = data.get("anime", {})
     anime_start = anime.get("start", "Unknown")
     anime_end = anime.get("end", "Unknown")
+    hit_title = data.get("hit_title")
+    total_hits = data.get("total_hits")
 
     embed = discord.Embed(
         title=title,
@@ -18,10 +20,23 @@ def build_embed(data: dict, index: int, total: int, show_type: bool = False) -> 
         color=0x2b2d31
     )
 
-    embed.set_footer(text=f"{index + 1} / {total}")
+    # บอกด้วยว่าค้นเจอทั้งหมดกี่เรื่อง เพราะเราตัดมาแสดงแค่ส่วนบนของอันดับ
+    footer = f"{index + 1} / {total}"
+    if total_hits and total_hits > total:
+        footer += f" · พบทั้งหมด {total_hits} เรื่อง"
+
+    embed.set_footer(text=footer)
 
     if image:
         embed.set_thumbnail(url=image)
+
+    # ค้น 'demon slayer' แล้วได้ 'Kimetsu no Yaiba' ต้องบอกว่าตรงเพราะชื่อไหน
+    if hit_title:
+        embed.add_field(
+            name="ตรงกับชื่อ",
+            value=hit_title,
+            inline=False
+        )
 
     if show_type:
         embed.add_field(

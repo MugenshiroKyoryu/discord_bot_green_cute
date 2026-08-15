@@ -25,7 +25,10 @@ from openapi_graphify import (  # noqa: E402
     _normalize_template,
     _reachable_schemas,
     _resolve_caller_id,
+    _schema_properties,
+    _schema_properties_deep,
     _strip_server_base,
+    drift_report,
     find_call_sites,
     introspect_openapi,
     match_operation,
@@ -115,7 +118,8 @@ async def fetch_series_detail(session, series_id):
         return await _request_json(session, "get", f"{SERIES_URL}/{series_id}")
 
     series = await _fetch()
-    return {"title": series.get("title"), "image": series.get("image")}
+    image = series.get("image") or {}
+    return {"title": series.get("title"), "image": image.get("url")}
 
 
 async def search_series(session, name):
@@ -336,6 +340,69 @@ class TestIntrospectEndToEnd(unittest.TestCase):
     def test_missing_spec_raises(self):
         with self.assertRaises(FileNotFoundError):
             introspect_openapi(self.root / "nope.json", self.root)
+
+
+# หัวรายงานก็มีคำว่า 'สเปกไม่มี' อยู่ในคำอธิบาย ต้องเทียบกับบรรทัดที่ฟ้องจริง ๆ
+_DRIFT_FINDING = "**โค้ดอ่านแต่สเปกไม่มี:"
+
+
+class TestSchemaDrift(unittest.TestCase):
+    """key ที่ซ้อนอยู่ในสเปกต้องไม่ถูกฟ้องว่า 'สเปกไม่มี'"""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        (self.root / "client.py").write_text(_CLIENT_SOURCE, encoding="utf-8")
+        self.spec_path = self.root / "spec.json"
+        self.spec_path.write_text(json.dumps(_mini_spec(), indent=2), encoding="utf-8")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _report_text(self) -> str:
+        report = introspect_openapi(self.spec_path, self.root, scope="used")
+        return "\n".join(drift_report(report["_spec"], report["_resolved"], self.root))
+
+    def test_deep_properties_follow_refs(self):
+        self.assertEqual(
+            _schema_properties_deep(_mini_spec(), "SeriesModel"), {"title", "image", "url"}
+        )
+
+    def test_top_level_properties_stay_shallow(self):
+        self.assertEqual(_schema_properties(_mini_spec(), "SeriesModel"), {"title", "image"})
+
+    def test_self_referencing_schema_does_not_loop(self):
+        spec = {
+            "components": {
+                "schemas": {
+                    "Node": {
+                        "properties": {
+                            "name": {"type": "string"},
+                            "child": {"$ref": "#/components/schemas/Node"},
+                        }
+                    }
+                }
+            }
+        }
+        self.assertEqual(_schema_properties_deep(spec, "Node"), {"name", "child"})
+
+    def test_nested_key_is_not_reported_as_missing(self):
+        # client.py อ่าน image.url ซึ่งอยู่ลึกลงไปหนึ่งชั้น ไม่ใช่ drift
+        text = self._report_text()
+        self.assertIn("GET /series/{id}", text)
+        self.assertNotIn(_DRIFT_FINDING, text)
+
+    def test_key_absent_from_spec_is_still_reported(self):
+        (self.root / "other.py").write_text(
+            _CLIENT_SOURCE.replace(
+                'return {"title": series.get("title"), "image": image.get("url")}',
+                'return {"ghost": series.get("ghost_field")}',
+            ),
+            encoding="utf-8",
+        )
+        text = self._report_text()
+        self.assertIn(_DRIFT_FINDING, text)
+        self.assertIn("ghost_field", text)
 
 
 if __name__ == "__main__":

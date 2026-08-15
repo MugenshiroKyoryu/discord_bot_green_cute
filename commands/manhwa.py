@@ -3,6 +3,7 @@ from discord import app_commands
 import discord
 
 from api.manhwaupdates import search_Manhwa
+from utils.search_options import FILTER_CHOICES, build_options
 from utils.series_view import SeriesView
 
 
@@ -15,13 +16,36 @@ class Manhwa(commands.Cog):
         name="manhwa",
         description="ค้นหามังฮวา"
     )
-    async def manhwa(self, interaction: discord.Interaction, name: str):
+    @app_commands.describe(
+        name="ชื่อเรื่องที่ต้องการค้นหา",
+        year="ปีที่ออก เช่น 2015",
+        genre="แนวที่ต้องการ คั่นด้วย , เช่น Action, Fantasy",
+        exclude_genre="แนวที่ไม่ต้องการ คั่นด้วย ,",
+        filter="ตัวกรองเพิ่มเติม"
+    )
+    @app_commands.choices(filter=FILTER_CHOICES)
+    async def manhwa(
+        self,
+        interaction: discord.Interaction,
+        name: str,
+        year: str | None = None,
+        genre: str | None = None,
+        exclude_genre: str | None = None,
+        filter: app_commands.Choice[str] | None = None
+    ):
 
         try:
 
             await interaction.response.defer()
 
-            results = await search_Manhwa(name)
+            options = build_options(
+                year=year,
+                genre=genre,
+                exclude_genre=exclude_genre,
+                filters=filter.value if filter else None
+            )
+
+            results = await search_Manhwa(name, options)
             view = SeriesView(results)
 
             msg = await interaction.followup.send(

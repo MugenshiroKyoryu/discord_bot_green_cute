@@ -436,7 +436,7 @@ def match_operation(
 
 
 # --------------------------------------------------------------------------
-# ตรวจ schema drift (heuristic, ระดับ top-level เท่านั้น)
+# ตรวจ schema drift (heuristic)
 # --------------------------------------------------------------------------
 
 
@@ -444,6 +444,48 @@ def _schema_properties(spec: dict[str, Any], schema_name: str) -> set[str]:
     schema = spec.get("components", {}).get("schemas", {}).get(schema_name, {})
     props = schema.get("properties")
     return set(props) if isinstance(props, dict) else set()
+
+
+def _schema_properties_deep(spec: dict[str, Any], schema_name: str) -> set[str]:
+    """ชื่อ property ทุกชั้นที่เข้าถึงได้จาก schema นี้ ตาม $ref ต่อไปด้วย
+
+    ใช้เช็คว่า key ที่โค้ดอ่านมีในสเปกไหม เพราะโค้ดอ่านแบบ ``series["anime"]["start"]``
+    แล้วเห็นแค่ชื่อ ``start`` ซึ่งไม่มีทางอยู่ชั้นบนสุด
+    """
+    schemas = spec.get("components", {}).get("schemas", {})
+    names: set[str] = set()
+    seen: set[str] = set()
+
+    def walk(node: Any) -> None:
+        if isinstance(node, list):
+            for item in node:
+                walk(item)
+            return
+        if not isinstance(node, dict):
+            return
+
+        ref = node.get("$ref")
+        if isinstance(ref, str):
+            target = _ref_name(ref)
+            # กัน schema ที่อ้างวนกลับมาหาตัวเอง
+            if target and target not in seen:
+                seen.add(target)
+                walk(schemas.get(target, {}))
+            return
+
+        props = node.get("properties")
+        if isinstance(props, dict):
+            for key, sub in props.items():
+                names.add(key)
+                walk(sub)
+
+        for key in ("items", "allOf", "anyOf", "oneOf", "additionalProperties"):
+            if key in node:
+                walk(node[key])
+
+    seen.add(schema_name)
+    walk(schemas.get(schema_name, {}))
+    return names
 
 
 def _read_keys_in_function(py_file: Path, func_qualname: str) -> set[str]:
@@ -485,8 +527,10 @@ def drift_report(
     lines = [
         "# Schema drift check (heuristic)",
         "",
-        "เทียบ key ที่โค้ดอ่าน กับ property ระดับบนสุดของ response schema",
-        "ตรวจเฉพาะชั้นบนสุด - key ที่ซ้อนลึกกว่านั้นจะขึ้นเป็น 'ไม่พบ' ได้แม้จะถูกต้อง",
+        "เทียบ key ที่โค้ดอ่าน กับ property ของ response schema",
+        "ฝั่ง 'สเปกไม่มี' เทียบกับ property ทุกชั้น (ตาม $ref) จึงไม่ฟ้อง key ที่ซ้อนลึก",
+        "ฝั่ง 'โค้ดไม่ได้ใช้' เทียบเฉพาะชั้นบนสุด ไม่งั้นจะยาวจนอ่านไม่ไหว",
+        "เทียบด้วยชื่อ key ล้วน ไม่ได้ดูว่าอยู่ถูกที่ - key ชื่อซ้ำข้ามชั้นจึงหลุดได้",
         "",
     ]
     for site, op in resolved:
@@ -502,15 +546,20 @@ def drift_report(
             lines.append("")
             continue
         props: set[str] = set()
+        deep_props: set[str] = set()
         for name in op.responds_with:
             props |= _schema_properties(spec, name)
+            deep_props |= _schema_properties_deep(spec, name)
         read = _read_keys_in_function(root / site.source_file, scope)
-        unknown = sorted(read - props)
+        unknown = sorted(read - deep_props)
         unused = sorted(props - read)
         lines.append(f"- schema: {', '.join(op.responds_with)}")
-        lines.append(f"- โค้ดอ่าน {len(read)} key · สเปกมี {len(props)} property ชั้นบนสุด")
+        lines.append(
+            f"- โค้ดอ่าน {len(read)} key · สเปกมี {len(props)} property ชั้นบนสุด "
+            f"({len(deep_props)} รวมทุกชั้น)"
+        )
         if unknown:
-            lines.append(f"- **โค้ดอ่านแต่สเปกไม่มี (ชั้นบนสุด): {', '.join(unknown)}**")
+            lines.append(f"- **โค้ดอ่านแต่สเปกไม่มี: {', '.join(unknown)}**")
         else:
             lines.append("- key ที่โค้ดอ่าน อยู่ในสเปกครบ")
         if unused:

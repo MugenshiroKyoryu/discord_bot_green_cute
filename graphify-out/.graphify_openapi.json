@@ -306,7 +306,7 @@
       "weight": 1.0,
       "confidence": "EXTRACTED",
       "source_file": "api/_client.py",
-      "source_location": "L58"
+      "source_location": "L159"
     },
     {
       "source": "api_client_search_series",
@@ -316,7 +316,7 @@
       "weight": 1.0,
       "confidence": "EXTRACTED",
       "source_file": "api/_client.py",
-      "source_location": "L102,L119"
+      "source_location": "L220,L247"
     }
   ]
 }
