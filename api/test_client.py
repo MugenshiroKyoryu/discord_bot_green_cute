@@ -19,12 +19,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from api._client import (  # noqa: E402
     _DETAIL_TTL,
+    _MAX_RELATED,
     _cache_get,
     _cache_put,
     _clean_query,
     _detail_cache,
     _error_detail,
     _format_context,
+    _related_to_fetch,
 )
 
 
@@ -110,16 +112,80 @@ class DetailCacheTests(unittest.TestCase):
     def test_miss_returns_none(self):
         self.assertIsNone(_cache_get(999))
 
-    def test_returns_a_copy_so_callers_can_add_hit_title(self):
+    def test_returns_a_copy_so_callers_can_add_total_hits(self):
         _cache_put(1, {"title": "One Piece"})
         first = _cache_get(1)
-        first["hit_title"] = "Wan Pisu"
-        self.assertNotIn("hit_title", _cache_get(1))
+        first["total_hits"] = 8900
+        self.assertNotIn("total_hits", _cache_get(1))
 
     def test_expired_entry_is_dropped(self):
         _detail_cache[1] = (time.monotonic() - _DETAIL_TTL - 1, {"title": "One Piece"})
         self.assertIsNone(_cache_get(1))
         self.assertNotIn(1, _detail_cache)
+
+
+class RelatedToFetchTests(unittest.TestCase):
+    """related_series จริงของ Konjiki no Word Master (id 67937814952)"""
+
+    KONJIKI = {
+        "title": "Konjiki no Word Master: Yuusha Yonin ni Makikomareta Unique Cheat",
+        "related": [
+            {
+                "id": 17505874636,
+                "relation": "Adapted From",
+                "name": "Konjiki no Moji Tsukai (Novel)",
+            }
+        ],
+    }
+
+    def test_picks_the_novel_the_manga_was_adapted_from(self):
+        self.assertEqual(
+            _related_to_fetch(self.KONJIKI, set()),
+            [(17505874636, "Adapted From")],
+        )
+
+    def test_skips_series_already_in_the_results(self):
+        # ผลค้นหาพานิยายมาเองแล้ว ไม่ต้องยิง detail ซ้ำ
+        self.assertEqual(_related_to_fetch(self.KONJIKI, {17505874636}), [])
+
+    def test_does_not_touch_the_set_it_was_given(self):
+        seen = {67937814952}
+        _related_to_fetch(self.KONJIKI, seen)
+        self.assertEqual(seen, {67937814952})
+
+    def test_skips_relations_that_are_a_different_story(self):
+        # ภาคต่อกับ spin-off เป็นคนละเรื่อง ผู้ใช้ไม่ได้ค้นหา
+        detail = {
+            "related": [
+                {"id": 1, "relation": "Sequel", "name": "ภาคต่อ"},
+                {"id": 2, "relation": "Spin-Off", "name": "ภาคแยก"},
+                {"id": 3, "relation": "Other", "name": "อื่น ๆ"},
+            ]
+        }
+        self.assertEqual(_related_to_fetch(detail, set()), [])
+
+    def test_respects_the_limit(self):
+        detail = {
+            "related": [
+                {"id": i, "relation": "Alternate Version", "name": f"เวอร์ชัน {i}"}
+                for i in range(1, _MAX_RELATED + 5)
+            ]
+        }
+        self.assertEqual(len(_related_to_fetch(detail, set())), _MAX_RELATED)
+
+    def test_drops_duplicate_ids_inside_related(self):
+        detail = {
+            "related": [
+                {"id": 7, "relation": "Adapted From", "name": "นิยาย"},
+                {"id": 7, "relation": "Main Story", "name": "นิยาย"},
+            ]
+        }
+        self.assertEqual(_related_to_fetch(detail, set()), [(7, "Adapted From")])
+
+    def test_handles_series_without_related_data(self):
+        # API ส่ง null มาทั้งที่มี key ได้ และเรื่องส่วนใหญ่ไม่มีความสัมพันธ์เลย
+        self.assertEqual(_related_to_fetch({}, set()), [])
+        self.assertEqual(_related_to_fetch({"related": None}, set()), [])
 
 
 if __name__ == "__main__":

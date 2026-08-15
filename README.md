@@ -78,6 +78,7 @@ embed สร้างจาก `build_embed()` ใน `utils/series_view.py`:
 | ชื่อเรื่อง (title) | `title` + `url` | คลิกได้ ลิงก์ไปหน้า MangaUpdates |
 | รูปปก (thumbnail) | `image` | แสดงเมื่อมีรูปเท่านั้น |
 | ประเภท | `type` | แสดงเฉพาะคำสั่ง `/series` |
+| เกี่ยวข้องกับผลอันดับ 1 | `relation` | แสดงเมื่อรายการนั้นมาจากสายความสัมพันธ์ เช่น `Adapted From` |
 | สถานะ | `status` | เช่น Ongoing / Complete |
 | อนิเมะ Start/End Chapter | `anime.start`, `anime.end` | ตอนเริ่ม/จบของฉบับอนิเมะ |
 | ชื่อที่เกี่ยวข้อง | `associated_names` | ตัดข้อความที่ 1024 ตัวอักษร แล้วต่อท้ายด้วย `...` |
@@ -103,6 +104,8 @@ embed สร้างจาก `build_embed()` ใน `utils/series_view.py`:
 
 - ทุกคำขอส่ง header `User-Agent: GreenCuteBot`
 - หลังค้นหาจะกรองผลตาม `type` ของแต่ละคำสั่ง แล้วดึงรายละเอียดที่ตรงเงื่อนไขเท่านั้น
+- ผลค้นหาถูกจัดอันดับใหม่ฝั่ง client ที่ `api/_ranking.py` เพราะ API ค้นกว้างมาก (คำว่า `one piece` คืน total_hits ระดับหลักพัน) ตัวที่คะแนนชื่อต่ำกว่าเกณฑ์จะถูกตัดทิ้ง
+- จากนั้นตาม `related_series` ของผลอันดับ 1 ไปดึงเรื่องเดียวกันคนละสื่อเพิ่ม (สูงสุด 3 รายการ เฉพาะความสัมพันธ์ `Adapted From` / `Alternate Version` / `Main Story`) เช่นค้นด้วยชื่อเต็มของฉบับมังงะแล้วฉบับนิยายใช้ชื่อสั้นกว่าจนคะแนนไม่ถึงเกณฑ์
 - การเรียกทั้งหมดผ่าน `api/_client.py` ซึ่งมี timeout 15 วินาที, จำกัดคำขอรายละเอียดพร้อมกันสูงสุด 5 ตัว และ retry อัตโนมัติเมื่อเจอ HTTP 429 (อ่านค่า `Retry-After` ถ้ามี)
 
 ## โครงสร้างโปรเจค
@@ -119,6 +122,7 @@ botdiscord/
 │   └── alltype.py       # คำสั่ง /series
 ├── api/                 # ตัวเรียก MangaUpdates API
 │   ├── _client.py       # โค้ดกลาง: search + fetch รายละเอียด + timeout/retry/จำกัด concurrency
+│   ├── _ranking.py      # จัดอันดับผลค้นหาใหม่ฝั่ง client (ฟังก์ชันล้วน ไม่แตะเน็ต)
 │   ├── mangaupdates.py
 │   ├── manhwaupdates.py
 │   ├── manhuaupdates.py

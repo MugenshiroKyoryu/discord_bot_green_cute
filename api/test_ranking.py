@@ -19,13 +19,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from api._ranking import MATCH_FLOOR, normalize, rank, score_item  # noqa: E402
 
 
-def _item(title, hit_title=None, series_id=1, votes=0, rating=None):
+def _item(title, hit_title=None, series_id=1, votes=0, rating=None, series_type="Manga"):
     """ผลลัพธ์ 1 รายการตามรูปของ SeriesSearchResponseV1.results"""
     return {
         "record": {
             "series_id": series_id,
             "title": title,
-            "type": "Manga",
+            "type": series_type,
             "rating_votes": votes,
             "bayesian_rating": rating,
         },
@@ -47,6 +47,23 @@ ONE_PIECE = [
     # สองตัวนี้โผล่มาจริงตอนค้น "one pece" - ติดมาเพราะคำว่า one คำเดียว
     _item("One One Onegai Onee-san", series_id=1001),
     _item("Fuufu no Uragao", hit_title="One & One", series_id=1002),
+]
+
+# ผลจริงของการค้นด้วยชื่อเต็มของฉบับมังงะ ฉบับนิยายมาที่อันดับ 2 ตั้งแต่ API แล้ว
+# แต่เดิมได้แค่ 0.32 เลยโดนตัดทิ้ง เหลือผลเดียวทั้งที่เรื่องนี้มีนิยายอยู่
+KONJIKI_QUERY = "Konjiki no Moji Tsukai - Yuusha Yonin ni Makikomareta Unique Cheat"
+
+KONJIKI = [
+    _item(
+        "Konjiki no Word Master: Yuusha Yonin ni Makikomareta Unique Cheat",
+        hit_title="Konjiki no Moji Tsukai - Yuusha Yonin ni Makikomareta Unique Cheat",
+        series_id=67937814952,
+    ),
+    _item("Konjiki no Moji Tsukai (Novel)", series_id=17505874636, series_type="Novel"),
+    _item("Nioh: Konjiki no Samurai", series_id=35659308911),
+    _item("Konjiki no Gash!! 2", series_id=19709504463),
+    _item("Moji Moji Koi Shiteru", hit_title="Moji Moji Koishiteru", series_id=56840476693),
+    _item("Konjiki no Gash!!", series_id=62053723305),
 ]
 
 # ผลจริงของ {"search": "demon slayer", "type": ["Manga"]}
@@ -87,6 +104,20 @@ class ScoreTests(unittest.TestCase):
 
     def test_typo_still_passes_floor(self):
         self.assertGreaterEqual(score_item("one pece", _item("One Piece")), MATCH_FLOOR)
+
+    def test_shorter_title_contained_in_query_passes_floor(self):
+        # ฉบับนิยายใช้ชื่อสั้นกว่าฉบับมังงะที่ผู้ใช้พิมพ์มา ต้องไม่ถูกตัดเพราะคำค้นยาว
+        item = _item("Konjiki no Moji Tsukai (Novel)", series_type="Novel")
+        self.assertGreaterEqual(score_item(KONJIKI_QUERY, item), MATCH_FLOOR)
+
+    def test_trailing_marker_is_ignored_when_comparing(self):
+        # '(Novel)' เป็นตัวกำกับของเว็บ ไม่ใช่ส่วนหนึ่งของชื่อเรื่อง
+        item = _item("Konjiki no Moji Tsukai (Novel)", series_type="Novel")
+        self.assertEqual(score_item("konjiki no moji tsukai", item), 1.0)
+
+    def test_single_word_title_is_not_promoted_by_containment(self):
+        # ถ้าไม่มีเกณฑ์จำนวนคำ ชื่อคำเดียวจะลอยขึ้นมาทุกคำค้นที่มีคำนั้น
+        self.assertLess(score_item("one piece", _item("Piece")), MATCH_FLOOR)
 
 
 class RankTests(unittest.TestCase):
@@ -136,6 +167,29 @@ class RankTests(unittest.TestCase):
 
     def test_empty_input_gives_empty_output(self):
         self.assertEqual(rank("one piece", [], limit=10), [])
+
+    def test_novel_edition_survives_a_long_manga_query(self):
+        # จุดอ่อนที่รายงานเข้ามา - เรื่องนี้มีนิยายแต่ผลค้นหาเจอแค่มังงะ
+        titles = _titles(rank(KONJIKI_QUERY, KONJIKI, limit=10))
+        self.assertIn("Konjiki no Moji Tsukai (Novel)", titles)
+
+    def test_manga_edition_still_ranks_above_the_novel(self):
+        titles = _titles(rank(KONJIKI_QUERY, KONJIKI, limit=10))
+        self.assertEqual(
+            titles[:2],
+            [
+                "Konjiki no Word Master: Yuusha Yonin ni Makikomareta Unique Cheat",
+                "Konjiki no Moji Tsukai (Novel)",
+            ],
+        )
+
+    def test_unrelated_titles_sharing_one_word_still_dropped(self):
+        # ต้องไม่แลกมาด้วยการปล่อยเรื่องที่แค่มีคำว่า konjiki หรือ moji เข้ามา
+        titles = _titles(rank(KONJIKI_QUERY, KONJIKI, limit=10))
+        self.assertNotIn("Konjiki no Gash!!", titles)
+        self.assertNotIn("Konjiki no Gash!! 2", titles)
+        self.assertNotIn("Nioh: Konjiki no Samurai", titles)
+        self.assertNotIn("Moji Moji Koi Shiteru", titles)
 
 
 if __name__ == "__main__":

@@ -27,12 +27,32 @@ _POPULARITY_WEIGHT = 0.05
 # ตัดทุกอย่างที่ไม่ใช่ตัวอักษร/ตัวเลข เพราะ '&' ':' '-' ในชื่อเรื่องไม่มีผลกับความหมาย
 _NON_WORD = re.compile(r"[\W_]+", re.UNICODE)
 
+# วงเล็บท้ายชื่อของ MangaUpdates เป็นตัวกำกับของเว็บ ไม่ใช่ส่วนหนึ่งของชื่อเรื่อง
+# เช่น 'Konjiki no Moji Tsukai (Novel)' หรือ 'Konjiki no Gash Bell!! (YADAKA Suzuo)'
+# ปล่อยไว้จะทำให้เทียบกับชื่อที่ผู้ใช้พิมพ์ไม่ตรง
+_TRAILING_MARKER = re.compile(r"\s*\([^()]*\)\s*$")
+
+# ต้องมีอย่างน้อยเท่านี้ถึงใช้กฎ 'ชื่อทั้งชื่ออยู่ในคำค้น' ได้
+# กันเรื่องที่ชื่อคำเดียวลอยขึ้นมาทุกคำค้นที่บังเอิญมีคำนั้น
+_MIN_CONTAINED_TOKENS = 2
+
 
 def normalize(text: str | None) -> str:
     """ทำชื่อให้เทียบกันได้ - ตัวพิมพ์เล็ก ไม่มีเครื่องหมาย ช่องว่างเดียว"""
     if not text:
         return ""
     return _NON_WORD.sub(" ", text.casefold()).strip()
+
+
+def _title_norm(title: str | None) -> str:
+    """normalize สำหรับชื่อเรื่องฝั่ง candidate - ตัดตัวกำกับท้ายชื่อทิ้งก่อน
+
+    แยกจาก normalize() เพราะ _client ใช้ normalize เทียบว่าจะโชว์ 'ตรงกับชื่อ' ไหม
+    ถ้าไปตัดวงเล็บในนั้นด้วย ฟิลด์นั้นจะหายในเคสที่ควรโชว์
+    """
+    if not title:
+        return ""
+    return normalize(_TRAILING_MARKER.sub("", title))
 
 
 def _token_score(query_token: str, candidate_tokens: list[str]) -> float:
@@ -49,7 +69,7 @@ def _token_score(query_token: str, candidate_tokens: list[str]) -> float:
 
 def text_score(query_norm: str, query_tokens: list[str], candidate: str | None) -> float:
     """0.0-1.0 บอกว่าชื่อ candidate ตรงกับคำค้นแค่ไหน"""
-    cand = normalize(candidate)
+    cand = _title_norm(candidate)
     if not cand or not query_tokens:
         return 0.0
 
@@ -69,6 +89,13 @@ def text_score(query_norm: str, query_tokens: list[str], candidate: str | None) 
     if cand.startswith(query_norm + " "):
         score = max(score, 0.9)
     elif query_norm in cand:
+        score = max(score, 0.85)
+
+    # ทิศกลับของกฎบน - coverage หารด้วยจำนวนคำของคำค้นเสมอ ชื่อที่สั้นกว่าคำค้น
+    # จึงได้คะแนนต่ำทั้งที่ตรงทุกคำ เช่นค้นชื่อเต็มของฉบับมังงะ
+    # 'Konjiki no Moji Tsukai - Yuusha Yonin ni Makikomareta Unique Cheat'
+    # แล้วฉบับนิยายใช้แค่ 'Konjiki no Moji Tsukai' จะได้ 0.32 แล้วโดนตัดทิ้ง
+    if len(cand_tokens) >= _MIN_CONTAINED_TOKENS and f" {cand} " in f" {query_norm} ":
         score = max(score, 0.85)
 
     return score

@@ -11,8 +11,8 @@ def build_embed(data: dict, index: int, total: int, show_type: bool = False) -> 
     anime = data.get("anime", {})
     anime_start = anime.get("start", "Unknown")
     anime_end = anime.get("end", "Unknown")
-    hit_title = data.get("hit_title")
     total_hits = data.get("total_hits")
+    relation = data.get("relation")
 
     embed = discord.Embed(
         title=title,
@@ -30,18 +30,19 @@ def build_embed(data: dict, index: int, total: int, show_type: bool = False) -> 
     if image:
         embed.set_thumbnail(url=image)
 
-    # ค้น 'demon slayer' แล้วได้ 'Kimetsu no Yaiba' ต้องบอกว่าตรงเพราะชื่อไหน
-    if hit_title:
-        embed.add_field(
-            name="ตรงกับชื่อ",
-            value=hit_title,
-            inline=False
-        )
-
     if show_type:
         embed.add_field(
             name="ประเภท",
             value=data.get("type", "Unknown"),
+            inline=True
+        )
+
+    # เรื่องนี้ไม่ได้ติดมาจากชื่อ แต่มาจากสายความสัมพันธ์ของผลอันดับ 1
+    # ต้องบอก ไม่งั้นผู้ใช้จะงงว่าทำไมชื่อไม่ตรงกับที่พิมพ์
+    if relation:
+        embed.add_field(
+            name="เกี่ยวข้องกับผลอันดับ 1",
+            value=relation,
             inline=True
         )
 

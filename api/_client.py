@@ -3,7 +3,7 @@ import time
 
 import aiohttp
 
-from api._ranking import normalize, rank
+from api._ranking import rank
 
 SEARCH_URL = "https://api.mangaupdates.com/v1/series/search"
 SERIES_URL = "https://api.mangaupdates.com/v1/series"
@@ -36,6 +36,13 @@ _SEARCH_MAX_LEN = 400
 _DETAIL_TTL = 900
 _DETAIL_CACHE_MAX = 256
 
+# relation_type ที่แปลว่า "เรื่องเดียวกันคนละสื่อ" ตาม enum ของ SeriesModelV1.related_series
+# ไม่เอา Sequel / Prequel / Spin-Off เพราะเป็นคนละเรื่องที่ผู้ใช้ไม่ได้ค้นหา
+_RELATED_RELATIONS = {"Adapted From", "Alternate Version", "Main Story"}
+
+# ตามสายจากผลอันดับ 1 เท่านั้น และจำกัดจำนวน กันยิง detail เพิ่มจนโดน rate limit
+_MAX_RELATED = 3
+
 # series_id -> (เวลาที่เก็บ, ข้อมูล)
 _detail_cache: dict[int, tuple[float, dict]] = {}
 
@@ -50,7 +57,7 @@ def _cache_get(series_id: int) -> dict | None:
         _detail_cache.pop(series_id, None)
         return None
 
-    # คืน copy เพราะผู้เรียกเติม hit_title / total_hits ลงไปทีหลัง
+    # คืน copy เพราะผู้เรียกเติม total_hits / relation ลงไปทีหลัง
     return dict(data)
 
 
@@ -175,6 +182,17 @@ async def fetch_series_detail(
     image = series.get("image") or {}
     image_url = (image.get("url") or {}).get("original")
 
+    # เก็บไว้ตามสายไปหาเรื่องเดียวกันคนละสื่อ ผลค้นหา (SeriesModelSearchV1) ไม่มีฟิลด์นี้
+    related = [
+        {
+            "id": r.get("related_series_id"),
+            "relation": r.get("relation_type"),
+            "name": r.get("related_series_name")
+        }
+        for r in (series.get("related_series") or [])
+        if r.get("related_series_id")
+    ]
+
     # ใช้ or แทน default ของ .get เพราะ API อาจส่ง null มาทั้งที่มี key
     detail = {
         "title": series.get("title") or "Unknown",
@@ -186,11 +204,82 @@ async def fetch_series_detail(
             "start": anime_data.get("start") or "Unknown",
             "end": anime_data.get("end") or "Unknown"
         },
-        "image": image_url
+        "image": image_url,
+        "related": related
     }
 
     _cache_put(series_id, detail)
     return detail
+
+
+def _related_to_fetch(
+    detail: dict,
+    seen_ids: set[int],
+    limit: int = _MAX_RELATED
+) -> list[tuple[int, str]]:
+    """เลือกเรื่องที่เกี่ยวข้องซึ่งควรตามไปดึงต่อ - คืน (series_id, relation_type)
+
+    ไม่แตะเน็ตและไม่แก้ seen_ids ที่รับมา จึงเทสได้ตรง ๆ
+    """
+    picked: list[tuple[int, str]] = []
+    taken = set(seen_ids)
+
+    for entry in detail.get("related") or []:
+
+        if len(picked) >= limit:
+            break
+
+        series_id = entry.get("id")
+        relation = entry.get("relation")
+
+        if series_id is None or series_id in taken:
+            continue
+
+        if relation not in _RELATED_RELATIONS:
+            continue
+
+        taken.add(series_id)
+        picked.append((series_id, relation))
+
+    return picked
+
+
+async def _fetch_related(
+    session: aiohttp.ClientSession,
+    detail: dict,
+    seen_ids: set[int],
+    allowed_types: set[str],
+    semaphore: asyncio.Semaphore
+) -> list[dict]:
+    """ตามสายความสัมพันธ์ของผลอันดับ 1 ไปเอาเรื่องเดียวกันคนละสื่อ
+
+    ค้นด้วยชื่อเต็มของฉบับมังงะแล้วฉบับนิยายที่ใช้ชื่อสั้นกว่าอาจคะแนนไม่ถึงเกณฑ์
+    แต่ MangaUpdates ผูกความสัมพันธ์ไว้ให้แล้ว ตามไปดึงตรง ๆ จึงแน่นอนกว่าเทียบชื่อ
+    """
+    picked = _related_to_fetch(detail, seen_ids)
+
+    if not picked:
+        return []
+
+    outcomes = await asyncio.gather(
+        *[fetch_series_detail(session, sid, semaphore) for sid, _ in picked],
+        return_exceptions=True
+    )
+
+    extra = []
+    for (_, relation), outcome in zip(picked, outcomes):
+
+        if isinstance(outcome, BaseException):
+            continue
+
+        # ผลค้นหาไม่บอก type ของเรื่องที่เกี่ยวข้อง ต้องดึงมาก่อนถึงกรองได้
+        if outcome.get("type") not in allowed_types:
+            continue
+
+        outcome["relation"] = relation
+        extra.append(outcome)
+
+    return extra
 
 
 async def search_series(
@@ -235,11 +324,8 @@ async def search_series(
         # API คืนทุกเรื่องที่มีคำค้นอยู่ในชื่อ ต้องจัดอันดับเองถึงจะได้ตัวที่ใช่ขึ้นก่อน
         ranked = rank(query, typed, limit=_MAX_RESULTS)
 
-        wanted = [
-            ((item.get("record") or {}).get("series_id"), item.get("hit_title"))
-            for item in ranked
-        ]
-        wanted = [(sid, hit) for sid, hit in wanted if sid is not None]
+        wanted = [(item.get("record") or {}).get("series_id") for item in ranked]
+        wanted = [sid for sid in wanted if sid is not None]
 
         if not wanted:
             # ค้นแบบไม่กรองประเภทอีกครั้ง เพื่อแยกว่าไม่พบเลย หรือเจอแต่ประเภทอื่น
@@ -257,25 +343,36 @@ async def search_series(
         semaphore = asyncio.Semaphore(_MAX_CONCURRENT)
 
         outcomes = await asyncio.gather(
-            *[fetch_series_detail(session, sid, semaphore) for sid, _ in wanted],
+            *[fetch_series_detail(session, sid, semaphore) for sid in wanted],
             return_exceptions=True
         )
 
         # ข้ามเรื่องที่ดึงรายละเอียดไม่สำเร็จ แสดงเท่าที่ได้
         details = []
-        for (_, hit_title), outcome in zip(wanted, outcomes):
+        for outcome in outcomes:
 
             if isinstance(outcome, BaseException):
                 continue
-
-            # บอกด้วยว่าไปตรงกับชื่อไหน เวลาค้น 'demon slayer' แล้วได้ 'Kimetsu no Yaiba'
-            if hit_title and normalize(hit_title) != normalize(outcome["title"]):
-                outcome["hit_title"] = hit_title
 
             outcome["total_hits"] = total_hits
             details.append(outcome)
 
         if not details:
             raise next(e for e in outcomes if isinstance(e, BaseException))
+
+        # เติมเรื่องเดียวกันคนละสื่อที่คะแนนชื่อไม่พาขึ้นมาเอง เช่นค้นชื่อเต็มของ
+        # ฉบับมังงะแล้วฉบับนิยายใช้ชื่อสั้นกว่า จะได้ไม่ตกหล่นไปทั้งที่ MU ผูกไว้ให้แล้ว
+        extra = await _fetch_related(
+            session,
+            details[0],
+            set(wanted),
+            allowed_types,
+            semaphore
+        )
+
+        for item in extra:
+            item["total_hits"] = total_hits
+
+        details.extend(extra)
 
         return details
