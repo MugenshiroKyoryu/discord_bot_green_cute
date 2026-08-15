@@ -1,0 +1,322 @@
+{
+  "nodes": [
+    {
+      "id": "openapi_op_post_series_search",
+      "label": "POST /series/search",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L10321"
+    },
+    {
+      "id": "openapi_op_get_series_id",
+      "label": "GET /series/{id}",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L9606"
+    },
+    {
+      "id": "openapi_schema_apicontextv1",
+      "label": "ApiContextV1",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L12757"
+    },
+    {
+      "id": "openapi_schema_apiresponsev1",
+      "label": "ApiResponseV1",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L12761"
+    },
+    {
+      "id": "openapi_schema_apivalidationerrorsv1",
+      "label": "ApiValidationErrorsV1",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L12788"
+    },
+    {
+      "id": "openapi_schema_avatarmodelsearchv1",
+      "label": "AvatarModelSearchV1",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L15588"
+    },
+    {
+      "id": "openapi_schema_categoriesmodelv1",
+      "label": "CategoriesModelV1",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L13314"
+    },
+    {
+      "id": "openapi_schema_imagemodelv1",
+      "label": "ImageModelV1",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L15616"
+    },
+    {
+      "id": "openapi_schema_listsseriesmodelv1",
+      "label": "ListsSeriesModelV1",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L15977"
+    },
+    {
+      "id": "openapi_schema_seriesmodelsearchv1",
+      "label": "SeriesModelSearchV1",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L18340"
+    },
+    {
+      "id": "openapi_schema_seriesmodelv1",
+      "label": "SeriesModelV1",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L17949"
+    },
+    {
+      "id": "openapi_schema_seriesrecommendationsmodelv1",
+      "label": "SeriesRecommendationsModelV1",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L18780"
+    },
+    {
+      "id": "openapi_schema_seriessearchrequestv1",
+      "label": "SeriesSearchRequestV1",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L18803"
+    },
+    {
+      "id": "openapi_schema_seriessearchresponsev1",
+      "label": "SeriesSearchResponseV1",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L18957"
+    },
+    {
+      "id": "openapi_schema_timev1",
+      "label": "TimeV1",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L19017"
+    },
+    {
+      "id": "openapi_schema_usermodelsearchv1",
+      "label": "UserModelSearchV1",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L19489"
+    }
+  ],
+  "edges": [
+    {
+      "source": "openapi_op_post_series_search",
+      "target": "openapi_schema_seriessearchrequestv1",
+      "relation": "accepts",
+      "context": "openapi_request_body",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L10321"
+    },
+    {
+      "source": "openapi_op_post_series_search",
+      "target": "openapi_schema_apiresponsev1",
+      "relation": "responds_with",
+      "context": "openapi_response",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L10321"
+    },
+    {
+      "source": "openapi_op_post_series_search",
+      "target": "openapi_schema_seriessearchresponsev1",
+      "relation": "responds_with",
+      "context": "openapi_response",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L10321"
+    },
+    {
+      "source": "openapi_op_get_series_id",
+      "target": "openapi_schema_seriesmodelv1",
+      "relation": "responds_with",
+      "context": "openapi_response",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L9606"
+    },
+    {
+      "source": "openapi_schema_apiresponsev1",
+      "target": "openapi_schema_apicontextv1",
+      "relation": "references",
+      "context": "openapi_schema_ref",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L12761"
+    },
+    {
+      "source": "openapi_schema_apiresponsev1",
+      "target": "openapi_schema_apivalidationerrorsv1",
+      "relation": "references",
+      "context": "openapi_schema_ref",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L12761"
+    },
+    {
+      "source": "openapi_schema_listsseriesmodelv1",
+      "target": "openapi_schema_timev1",
+      "relation": "references",
+      "context": "openapi_schema_ref",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L15977"
+    },
+    {
+      "source": "openapi_schema_seriesmodelsearchv1",
+      "target": "openapi_schema_imagemodelv1",
+      "relation": "references",
+      "context": "openapi_schema_ref",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L18340"
+    },
+    {
+      "source": "openapi_schema_seriesmodelsearchv1",
+      "target": "openapi_schema_timev1",
+      "relation": "references",
+      "context": "openapi_schema_ref",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L18340"
+    },
+    {
+      "source": "openapi_schema_seriesmodelsearchv1",
+      "target": "openapi_schema_usermodelsearchv1",
+      "relation": "references",
+      "context": "openapi_schema_ref",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L18340"
+    },
+    {
+      "source": "openapi_schema_seriesmodelv1",
+      "target": "openapi_schema_categoriesmodelv1",
+      "relation": "references",
+      "context": "openapi_schema_ref",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L17949"
+    },
+    {
+      "source": "openapi_schema_seriesmodelv1",
+      "target": "openapi_schema_imagemodelv1",
+      "relation": "references",
+      "context": "openapi_schema_ref",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L17949"
+    },
+    {
+      "source": "openapi_schema_seriesmodelv1",
+      "target": "openapi_schema_seriesrecommendationsmodelv1",
+      "relation": "references",
+      "context": "openapi_schema_ref",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L17949"
+    },
+    {
+      "source": "openapi_schema_seriesmodelv1",
+      "target": "openapi_schema_timev1",
+      "relation": "references",
+      "context": "openapi_schema_ref",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L17949"
+    },
+    {
+      "source": "openapi_schema_seriesmodelv1",
+      "target": "openapi_schema_usermodelsearchv1",
+      "relation": "references",
+      "context": "openapi_schema_ref",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L17949"
+    },
+    {
+      "source": "openapi_schema_seriesrecommendationsmodelv1",
+      "target": "openapi_schema_imagemodelv1",
+      "relation": "references",
+      "context": "openapi_schema_ref",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L18780"
+    },
+    {
+      "source": "openapi_schema_seriessearchresponsev1",
+      "target": "openapi_schema_listsseriesmodelv1",
+      "relation": "references",
+      "context": "openapi_schema_ref",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L18957"
+    },
+    {
+      "source": "openapi_schema_seriessearchresponsev1",
+      "target": "openapi_schema_seriesmodelsearchv1",
+      "relation": "references",
+      "context": "openapi_schema_ref",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L18957"
+    },
+    {
+      "source": "openapi_schema_usermodelsearchv1",
+      "target": "openapi_schema_avatarmodelsearchv1",
+      "relation": "references",
+      "context": "openapi_schema_ref",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L19489"
+    },
+    {
+      "source": "openapi_schema_usermodelsearchv1",
+      "target": "openapi_schema_timev1",
+      "relation": "references",
+      "context": "openapi_schema_ref",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "docs/mangaupdates-openapi.json",
+      "source_location": "L19489"
+    },
+    {
+      "source": "api_client_fetch_series_detail",
+      "target": "openapi_op_get_series_id",
+      "relation": "calls_endpoint",
+      "context": "http_call_site",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "api/_client.py",
+      "source_location": "L58"
+    },
+    {
+      "source": "api_client_search_series",
+      "target": "openapi_op_post_series_search",
+      "relation": "calls_endpoint",
+      "context": "http_call_site",
+      "weight": 1.0,
+      "confidence": "EXTRACTED",
+      "source_file": "api/_client.py",
+      "source_location": "L102,L119"
+    }
+  ]
+}

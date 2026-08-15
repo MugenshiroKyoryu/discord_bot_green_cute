@@ -1,0 +1,261 @@
+{
+  "communities": {
+    "0": [
+      "api_client_fetch_series_detail",
+      "clientsession",
+      "openapi_op_get_series_id",
+      "openapi_schema_avatarmodelsearchv1",
+      "openapi_schema_categoriesmodelv1",
+      "openapi_schema_imagemodelv1",
+      "openapi_schema_listsseriesmodelv1",
+      "openapi_schema_seriesmodelsearchv1",
+      "openapi_schema_seriesmodelv1",
+      "openapi_schema_seriesrecommendationsmodelv1",
+      "openapi_schema_seriessearchresponsev1",
+      "openapi_schema_timev1",
+      "openapi_schema_usermodelsearchv1",
+      "semaphore"
+    ],
+    "1": [
+      "api_alltypeupdates",
+      "api_alltypeupdates_search_series",
+      "api_client",
+      "api_client_request_json",
+      "api_client_search_series",
+      "api_mangaupdates",
+      "api_mangaupdates_search_manga",
+      "api_manhuaupdates",
+      "api_manhuaupdates_search_manhua",
+      "api_manhwaupdates",
+      "api_manhwaupdates_search_manhwa",
+      "api_novelupdates",
+      "api_novelupdates_search_novel"
+    ],
+    "2": [
+      "button",
+      "embed",
+      "utils_series_view",
+      "utils_series_view_build_embed",
+      "utils_series_view_py_interaction",
+      "utils_series_view_seriesview",
+      "utils_series_view_seriesview_current_embed",
+      "utils_series_view_seriesview_init",
+      "utils_series_view_seriesview_next_button",
+      "utils_series_view_seriesview_on_timeout",
+      "utils_series_view_seriesview_prev_button",
+      "utils_series_view_seriesview_update_buttons"
+    ],
+    "3": [
+      "event",
+      "main",
+      "main_load_extensions",
+      "main_main",
+      "main_on_ready",
+      "myserver",
+      "myserver_home",
+      "myserver_run",
+      "myserver_server_on",
+      "route"
+    ],
+    "4": [
+      "commands_alltype",
+      "commands_alltype_py_command",
+      "commands_alltype_py_interaction",
+      "commands_alltype_series",
+      "commands_alltype_series_init",
+      "commands_alltype_series_series",
+      "commands_alltype_setup"
+    ],
+    "5": [
+      "commands_manga",
+      "commands_manga_manga",
+      "commands_manga_manga_init",
+      "commands_manga_manga_manga",
+      "commands_manga_py_command",
+      "commands_manga_py_interaction",
+      "commands_manga_setup"
+    ],
+    "6": [
+      "commands_manhua",
+      "commands_manhua_manhua",
+      "commands_manhua_manhua_init",
+      "commands_manhua_manhua_manhua",
+      "commands_manhua_py_command",
+      "commands_manhua_py_interaction",
+      "commands_manhua_setup"
+    ],
+    "7": [
+      "commands_manhwa",
+      "commands_manhwa_manhwa",
+      "commands_manhwa_manhwa_init",
+      "commands_manhwa_manhwa_manhwa",
+      "commands_manhwa_py_command",
+      "commands_manhwa_py_interaction",
+      "commands_manhwa_setup"
+    ],
+    "8": [
+      "commands_novel",
+      "commands_novel_novel",
+      "commands_novel_novel_init",
+      "commands_novel_novel_novel",
+      "commands_novel_py_command",
+      "commands_novel_py_interaction",
+      "commands_novel_setup"
+    ],
+    "9": [
+      "openapi_op_post_series_search",
+      "openapi_schema_apicontextv1",
+      "openapi_schema_apiresponsev1",
+      "openapi_schema_apivalidationerrorsv1",
+      "openapi_schema_seriessearchrequestv1"
+    ]
+  },
+  "cohesion": {
+    "0": 0.1978021978021978,
+    "1": 0.2948717948717949,
+    "2": 0.30303030303030304,
+    "3": 0.28888888888888886,
+    "4": 0.3333333333333333,
+    "5": 0.3333333333333333,
+    "6": 0.3333333333333333,
+    "7": 0.3333333333333333,
+    "8": 0.3333333333333333,
+    "9": 0.4
+  },
+  "gods": [
+    {
+      "id": "utils_series_view_seriesview",
+      "label": "SeriesView",
+      "degree": 22
+    },
+    {
+      "id": "api_client_search_series",
+      "label": "search_series()",
+      "degree": 14
+    },
+    {
+      "id": "openapi_schema_seriesmodelv1",
+      "label": "SeriesModelV1",
+      "degree": 6
+    },
+    {
+      "id": "api_client_fetch_series_detail",
+      "label": "fetch_series_detail()",
+      "degree": 5
+    },
+    {
+      "id": "commands_alltype_series",
+      "label": "Series",
+      "degree": 5
+    },
+    {
+      "id": "commands_manga_manga",
+      "label": "Manga",
+      "degree": 5
+    },
+    {
+      "id": "commands_manhua_manhua",
+      "label": "Manhua",
+      "degree": 5
+    },
+    {
+      "id": "commands_manhwa_manhwa",
+      "label": "Manhwa",
+      "degree": 5
+    },
+    {
+      "id": "commands_novel_novel",
+      "label": "Novel",
+      "degree": 5
+    },
+    {
+      "id": "api_alltypeupdates_search_series",
+      "label": "search_Series()",
+      "degree": 4
+    }
+  ],
+  "surprises": [
+    {
+      "source": "Series",
+      "target": "SeriesView",
+      "source_files": [
+        "commands/alltype.py",
+        "utils/series_view.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "Manga",
+      "target": "SeriesView",
+      "source_files": [
+        "commands/manga.py",
+        "utils/series_view.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "Manhua",
+      "target": "SeriesView",
+      "source_files": [
+        "commands/manhua.py",
+        "utils/series_view.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "Manhwa",
+      "target": "SeriesView",
+      "source_files": [
+        "commands/manhwa.py",
+        "utils/series_view.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "Novel",
+      "target": "SeriesView",
+      "source_files": [
+        "commands/novel.py",
+        "utils/series_view.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    }
+  ],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `SeriesView` connect `Paginated Embed View` to `Alltype Command`, `Manga Command`, `Manhua Command`, `Manhwa Command`, `Novel Search Command`?",
+      "why": "High betweenness centrality (0.343) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `search_series()` connect `Scraper API Layer` to `MangaUpdates API Surface`, `MangaUpdates API Surface (2)`?",
+      "why": "High betweenness centrality (0.312) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `POST /series/search` connect `MangaUpdates API Surface (2)` to `MangaUpdates API Surface`, `Scraper API Layer`?",
+      "why": "High betweenness centrality (0.156) - this node is a cross-community bridge."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 5 inferred relationships involving `SeriesView` (e.g. with `Series` and `Manga`) actually correct?",
+      "why": "`SeriesView` has 5 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "isolated_nodes",
+      "question": "What connects `ApiContextV1`, `ApiValidationErrorsV1`, `AvatarModelSearchV1` to the rest of the system?",
+      "why": "5 weakly-connected nodes found - possible documentation gaps or missing edges."
+    }
+  ]
+}

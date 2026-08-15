@@ -1,0 +1,10 @@
+# OpenAPI spec ถูกอ่านผ่าน tools/openapi_graphify.py ไม่ใช่ผ่าน AST extractor
+# ถ้าปล่อยให้สแกนตามปกติจะได้ 0 node พร้อม warning #1666 ทุกรอบ
+docs/mangaupdates-openapi.json
+
+# สคริปต์ที่ใช้ "สร้าง" กราฟ ไม่ควรอยู่ "ใน" กราฟ - มันไม่ใช่โค้ดของบอท
+# ถ้าไม่กันไว้ node ของ tooling (~61) จะเยอะพอๆ กับโค้ดบอทจริง (~73)
+tools/
+
+# config ของ editor/agent ไม่ใช่โค้ดโปรเจกต์ และได้ 0 node อยู่แล้ว (warning #1666)
+.claude/

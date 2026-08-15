@@ -1,0 +1,86 @@
+{
+  "api/_client.py": {
+    "mtime": 1781176551.6036427,
+    "seen": 1786767567.9143794,
+    "ast_hash": "efff680d6ec17405774289e778beb52f",
+    "semantic_hash": "efff680d6ec17405774289e778beb52f"
+  },
+  "api/alltypeupdates.py": {
+    "mtime": 1780802803.2986937,
+    "seen": 1786767567.914383,
+    "ast_hash": "dbae083b963a4f80766f709d6585ce90",
+    "semantic_hash": "dbae083b963a4f80766f709d6585ce90"
+  },
+  "api/mangaupdates.py": {
+    "mtime": 1780802743.595039,
+    "seen": 1786767567.9143844,
+    "ast_hash": "acb0570ca662a601f7df3bef0d13850b",
+    "semantic_hash": "acb0570ca662a601f7df3bef0d13850b"
+  },
+  "api/manhuaupdates.py": {
+    "mtime": 1780803044.576751,
+    "seen": 1786767567.9143856,
+    "ast_hash": "73214ccd47fa69619c71d90cfb7376af",
+    "semantic_hash": "73214ccd47fa69619c71d90cfb7376af"
+  },
+  "api/manhwaupdates.py": {
+    "mtime": 1780802777.5650163,
+    "seen": 1786767567.914387,
+    "ast_hash": "13e5d26f352fdeed91dff2ffd4ca4b94",
+    "semantic_hash": "13e5d26f352fdeed91dff2ffd4ca4b94"
+  },
+  "api/novelupdates.py": {
+    "mtime": 1780802789.7650437,
+    "seen": 1786767567.914388,
+    "ast_hash": "d8af78d027cd8a80bb155f78c3914a33",
+    "semantic_hash": "d8af78d027cd8a80bb155f78c3914a33"
+  },
+  "commands/alltype.py": {
+    "mtime": 1779374268.809555,
+    "seen": 1786767567.914389,
+    "ast_hash": "a414367791be27bda204140945f0ef6d",
+    "semantic_hash": "a414367791be27bda204140945f0ef6d"
+  },
+  "commands/manga.py": {
+    "mtime": 1779374235.1393006,
+    "seen": 1786767567.91439,
+    "ast_hash": "9748caa0289ffc5e984c2a3bd64d8e0c",
+    "semantic_hash": "9748caa0289ffc5e984c2a3bd64d8e0c"
+  },
+  "commands/manhua.py": {
+    "mtime": 1780803105.3090522,
+    "seen": 1786767567.9143913,
+    "ast_hash": "d38a7c26eba5216beb082ba03f1f65f3",
+    "semantic_hash": "d38a7c26eba5216beb082ba03f1f65f3"
+  },
+  "commands/manhwa.py": {
+    "mtime": 1779374247.586193,
+    "seen": 1786767567.9143922,
+    "ast_hash": "939753763756d1a682ba871d34852db2",
+    "semantic_hash": "939753763756d1a682ba871d34852db2"
+  },
+  "commands/novel.py": {
+    "mtime": 1779374258.9393935,
+    "seen": 1786767567.9143937,
+    "ast_hash": "4063b6d622d0a4d912a61a3f9796e69e",
+    "semantic_hash": "4063b6d622d0a4d912a61a3f9796e69e"
+  },
+  "main.py": {
+    "mtime": 1773377978.1575217,
+    "seen": 1786767567.9143946,
+    "ast_hash": "00e872c5419c1b65d2fd03a35d0b65e3",
+    "semantic_hash": "00e872c5419c1b65d2fd03a35d0b65e3"
+  },
+  "myserver.py": {
+    "mtime": 1773376786.3845675,
+    "seen": 1786767567.9143956,
+    "ast_hash": "a629e532a3eee90755c6112ff12526c9",
+    "semantic_hash": "a629e532a3eee90755c6112ff12526c9"
+  },
+  "utils/series_view.py": {
+    "mtime": 1779374214.4757223,
+    "seen": 1786767567.9143965,
+    "ast_hash": "3451a60ded5857754cc201766742496e",
+    "semantic_hash": "3451a60ded5857754cc201766742496e"
+  }
+}
