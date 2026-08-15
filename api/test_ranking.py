@@ -16,7 +16,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from api._ranking import MATCH_FLOOR, normalize, rank, score_item  # noqa: E402
+from api._ranking import (  # noqa: E402
+    MATCH_FLOOR,
+    detail_score,
+    normalize,
+    rank,
+    rerank_details,
+    score_item,
+)
 
 
 def _item(title, hit_title=None, series_id=1, votes=0, rating=None, series_type="Manga"):
@@ -33,8 +40,21 @@ def _item(title, hit_title=None, series_id=1, votes=0, rating=None, series_type=
     }
 
 
+def _detail(title, associated=None, series_id=1):
+    """รายละเอียด 1 เรื่องตามรูปที่ fetch_series_detail คืนมา - เอาเฉพาะฟิลด์ที่ใช้จัดอันดับ"""
+    return {
+        "series_id": series_id,
+        "title": title,
+        "associated_names": list(associated or []),
+    }
+
+
 def _titles(items):
     return [item["record"]["title"] for item in items]
+
+
+def _detail_titles(details):
+    return [detail["title"] for detail in details]
 
 
 # ผลจริงของ {"search": "one piece", "type": ["Manga"]} เรียงตามที่ API ส่งมา
@@ -72,6 +92,91 @@ DEMON_SLAYER = [
     _item("Ayashiya", hit_title="Ayashiya the Demon Slayer", series_id=2002),
     _item("Momoiro Toukiden Momotarou-kun", hit_title="Pink Demon Slayer Momotarou", series_id=2003),
     _item("Mukurozumi no Volte", hit_title="Slayer Volte", series_id=2004),
+]
+
+
+# ผลจริงของ {"search": "akame ga kill", "type": ["Manga"]} เรียงตามที่ API ส่งมา
+# ยกเว้นตัวสุดท้าย hit_title เท่ากับชื่อหลักทุกตัว - API ไม่ส่งชื่อรองที่ทำให้แมตช์กลับมาด้วย
+# ผู้ใช้พิมพ์ชื่ออังกฤษ 'kill' แต่ชื่อหลักเป็นโรมาจิ 'Kiru' รอบแรกจึงมองไม่เห็นว่าตรง
+AKAME = [
+    _item("Akame ga Kiru! Zero", series_id=61228207477, votes=111, rating=6.92),
+    _item("Akame ga Kiru! 1.5", series_id=32641502508, votes=19, rating=6.31),
+    _item("Akame ga Kiru!", series_id=54773004994, votes=1258, rating=7.86),
+    _item("Akame", series_id=31929938980, votes=21, rating=6.9),
+    _item("Akame no Daiji", series_id=59020426045, votes=1, rating=6.23),
+    _item("Akame No Tatari", series_id=17509160105),
+    _item("Kill la Kill", series_id=8928353448, votes=45, rating=5.79),
+    _item("Kill Time Seiheki Series Dochi ga Eroi!?", series_id=61608895239, votes=1, rating=6.2),
+    _item("Dolly Kill Kill", series_id=37451551144, votes=123, rating=6.78),
+    _item(
+        "Zansatsu Hantou Akamemura",
+        hit_title="Zansatsu Hantou Akame Mura",
+        series_id=40370907977, votes=1, rating=6.3,
+    ),
+]
+
+# associated ของ GET /series/{id} ของ 10 เรื่องข้างบน เรียงตามลำดับเดียวกัน
+# ชื่อรองภาษาอื่นเก็บไว้ด้วย จะได้พิสูจน์ว่ามันไม่ดันคะแนนมั่ว
+AKAME_DETAILS = [
+    _detail(
+        "Akame ga Kiru! Zero",
+        [
+            "Akame ga Kill! Zero",
+            "Akame ga Kiru! Rei",
+            "Убийца Акаме! Начало",
+            "อาคาเมะ สวยประหาร Zero (SIC)",
+            "アカメが斬る! 零",
+        ],
+        series_id=61228207477,
+    ),
+    _detail(
+        "Akame ga Kiru! 1.5",
+        ["Akame ga Kill! 1.5", "アカメが斬る！ 1.5"],
+        series_id=32641502508,
+    ),
+    _detail(
+        "Akame ga Kiru!",
+        [
+            "!آکامه گا کیل",
+            "Akame ga KILL!",
+            "Akame Kills!",
+            "Akame Slashes!",
+            "Akame, Keser!",
+            "Red Eyes Sword – Akame ga Kill !",
+            "Red-Eye Kills!",
+            "Убивця Акаме!",
+            "Убийца Акаме!",
+            "אקאמה גה קיל",
+            "อาคาเมะสวยประหาร",
+            "アカメが斬る！",
+            "아카메가 벤다!",
+            "아카메가 벤다!!",
+        ],
+        series_id=54773004994,
+    ),
+    _detail(
+        "Akame",
+        ["Akame - The Red Eyes", "Akame The Red Eyes", "赤目"],
+        series_id=31929938980,
+    ),
+    _detail("Akame no Daiji", ["赤目の大事"], series_id=59020426045),
+    _detail("Akame No Tatari", ["赤目のたたり"], series_id=17509160105),
+    _detail("Kill la Kill", ["キルラキル"], series_id=8928353448),
+    _detail(
+        "Kill Time Seiheki Series Dochi ga Eroi!?",
+        ["キルタイム性癖シリーズ どっちがエロい!？"],
+        series_id=61608895239,
+    ),
+    _detail(
+        "Dolly Kill Kill",
+        ["Dolly♥Kill Kill", "ตุ๊กตาพันธุ์โหด", "ドリィ キルキル"],
+        series_id=37451551144,
+    ),
+    _detail(
+        "Zansatsu Hantou Akamemura",
+        ["Zansatsu Hantou Akame Mura", "Zansatsu Hantou Akame-mura", "惨殺半島 赤目村"],
+        series_id=40370907977,
+    ),
 ]
 
 
@@ -190,6 +295,96 @@ class RankTests(unittest.TestCase):
         self.assertNotIn("Konjiki no Gash!! 2", titles)
         self.assertNotIn("Nioh: Konjiki no Samurai", titles)
         self.assertNotIn("Moji Moji Koi Shiteru", titles)
+
+
+class AkameStageOneTests(unittest.TestCase):
+    """ล็อกอาการของบั๊กไว้ - รอบแรกช่วยเคสชื่อโรมาจิ vs ชื่ออังกฤษไม่ได้"""
+
+    def test_every_candidate_falls_below_the_floor(self):
+        # 'kiru' กับ 'kill' ใกล้กันแค่ 0.5 ไม่ถึงเกณฑ์ของ token ทุกเรื่องเลยตกพร้อมกัน
+        for item in AKAME:
+            with self.subTest(title=item["record"]["title"]):
+                self.assertLess(score_item("akame ga kill", item), MATCH_FLOOR)
+
+    def test_api_order_puts_the_prequel_before_the_main_series(self):
+        # ไม่มีใครผ่านเกณฑ์ รอบแรกจึงคืนลำดับดิบของ API ซึ่งเอาภาคก่อนหน้ามาก่อน
+        titles = _titles(rank("akame ga kill", AKAME, limit=10))
+        self.assertEqual(titles[0], "Akame ga Kiru! Zero")
+        self.assertEqual(titles.index("Akame ga Kiru!"), 2)
+
+    def test_api_order_also_lets_unrelated_titles_through(self):
+        titles = _titles(rank("akame ga kill", AKAME, limit=10))
+        self.assertIn("Kill la Kill", titles)
+        self.assertIn("Dolly Kill Kill", titles)
+
+
+class DetailScoreTests(unittest.TestCase):
+
+    def test_associated_name_lifts_a_romanized_title(self):
+        # ชื่อหลัก 'Akame ga Kiru!' ไม่ตรง แต่ชื่อรอง 'Akame ga KILL!' ตรงเป๊ะ
+        detail = _detail("Akame ga Kiru!", ["Akame ga KILL!"])
+        self.assertEqual(detail_score("akame ga kill", detail), 1.0)
+
+    def test_title_alone_is_used_when_there_are_no_associated_names(self):
+        self.assertEqual(detail_score("one piece", _detail("One Piece")), 1.0)
+
+    def test_missing_associated_names_key_does_not_break(self):
+        self.assertEqual(detail_score("one piece", {"title": "One Piece"}), 1.0)
+
+    def test_non_latin_names_do_not_inflate_the_score(self):
+        detail = _detail("Kill la Kill", ["キルラキル"])
+        self.assertLess(detail_score("akame ga kill", detail), MATCH_FLOOR)
+
+
+class RerankDetailsTests(unittest.TestCase):
+
+    def test_main_series_beats_the_prequel(self):
+        # จุดที่รายงานเข้ามา - ผู้ใช้หาภาคหลัก แต่ได้ภาคก่อนหน้าเป็นอันดับ 1
+        ranked = rerank_details("akame ga kill", AKAME_DETAILS)
+        self.assertEqual(ranked[0]["title"], "Akame ga Kiru!")
+
+    def test_keeps_the_side_stories_below_the_main_series(self):
+        # ภาคแยกยังอยู่ ผู้ใช้กดดูต่อได้ แค่ต้องไม่มาก่อนภาคหลัก
+        self.assertEqual(
+            _detail_titles(rerank_details("akame ga kill", AKAME_DETAILS)),
+            ["Akame ga Kiru!", "Akame ga Kiru! Zero", "Akame ga Kiru! 1.5"],
+        )
+
+    def test_drops_titles_that_only_share_one_word(self):
+        titles = _detail_titles(rerank_details("akame ga kill", AKAME_DETAILS))
+        for junk in (
+            "Akame",
+            "Akame no Daiji",
+            "Akame No Tatari",
+            "Kill la Kill",
+            "Kill Time Seiheki Series Dochi ga Eroi!?",
+            "Dolly Kill Kill",
+            "Zansatsu Hantou Akamemura",
+        ):
+            with self.subTest(title=junk):
+                self.assertNotIn(junk, titles)
+
+    def test_ties_keep_the_order_they_came_in_with(self):
+        # ทั้งคู่ได้ 0.9 เท่ากัน ต้องคงลำดับจากรอบแรกที่ตัดสินด้วยความนิยมมาแล้ว
+        zero = _detail("Akame ga Kiru! Zero", ["Akame ga Kill! Zero"], series_id=1)
+        one_five = _detail("Akame ga Kiru! 1.5", ["Akame ga Kill! 1.5"], series_id=2)
+        self.assertEqual(
+            _detail_titles(rerank_details("akame ga kill", [one_five, zero])),
+            ["Akame ga Kiru! 1.5", "Akame ga Kiru! Zero"],
+        )
+
+    def test_falls_back_to_the_given_order_when_nothing_passes(self):
+        # เหตุผลเดียวกับ rank() - คืนลำดับเดิมดีกว่าคืนลิสต์ว่างให้ผู้ใช้
+        details = AKAME_DETAILS[6:9]
+        self.assertEqual(rerank_details("akame ga kill", details), details)
+
+    def test_empty_input_gives_empty_output(self):
+        self.assertEqual(rerank_details("akame ga kill", []), [])
+
+    def test_does_not_mutate_the_list_it_was_given(self):
+        details = list(AKAME_DETAILS)
+        rerank_details("akame ga kill", details)
+        self.assertEqual(details, AKAME_DETAILS)
 
 
 if __name__ == "__main__":

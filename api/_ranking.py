@@ -128,6 +128,53 @@ def score_item(query: str, item: dict) -> float:
     return _match(query_norm, query_norm.split(), item)
 
 
+def detail_score(query: str, detail: dict) -> float:
+    """คะแนนของเรื่อง 1 เรื่องจากรายละเอียดเต็ม - นับชื่อรองด้วย
+
+    ผลค้นหา (SeriesModelSearchV1) ให้มาแค่ชื่อหลักกับ hit_title และเอาเข้าจริง
+    API ส่ง hit_title เท่ากับชื่อหลักเสมอ ชื่อรองที่ผู้ใช้พิมพ์มาจึงมองไม่เห็น
+    เช่นค้น 'akame ga kill' ชื่อหลักคือ 'Akame ga Kiru!' - 'kill' กับ 'kiru'
+    ใกล้กันแค่ 0.5 ไม่ถึง _TOKEN_FLOOR ทุกเรื่องเลยตกเกณฑ์พร้อมกัน
+    รายละเอียดเต็มมี associated_names อยู่แล้ว ('Akame ga KILL!') เอามาเทียบจึงตรงกว่า
+    """
+    query_norm = normalize(query)
+    query_tokens = query_norm.split()
+
+    best = text_score(query_norm, query_tokens, detail.get("title"))
+
+    for name in detail.get("associated_names") or []:
+        if best >= 1.0:
+            break
+        score = text_score(query_norm, query_tokens, name)
+        if score > best:
+            best = score
+
+    return best
+
+
+def rerank_details(
+    query: str,
+    details: list[dict],
+    *,
+    floor: float = MATCH_FLOOR
+) -> list[dict]:
+    """จัดอันดับรอบสองด้วยรายละเอียดเต็ม แล้วตัดตัวที่อ่อนเกินเกณฑ์
+
+    เรียงแบบเสถียร ตัวที่คะแนนเท่ากันจึงคงลำดับจากรอบแรกไว้ ซึ่งรอบแรก
+    ตัดสินด้วยความนิยมมาแล้ว ไม่ต้องพา rating_votes ข้ามมาอีก
+    """
+    scored = [(detail_score(query, detail), detail) for detail in details]
+
+    kept = [row for row in scored if row[0] >= floor]
+
+    if not kept:
+        # เหตุผลเดียวกับ rank() - คืนลำดับเดิมดีกว่าคืนลิสต์ว่าง
+        return list(details)
+
+    kept.sort(key=lambda row: row[0], reverse=True)
+    return [detail for _, detail in kept]
+
+
 def rank(
     query: str,
     items: list[dict],

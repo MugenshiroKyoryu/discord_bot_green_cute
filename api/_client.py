@@ -3,7 +3,7 @@ import time
 
 import aiohttp
 
-from api._ranking import rank
+from api._ranking import rank, rerank_details
 
 SEARCH_URL = "https://api.mangaupdates.com/v1/series/search"
 SERIES_URL = "https://api.mangaupdates.com/v1/series"
@@ -195,6 +195,8 @@ async def fetch_series_detail(
 
     # ใช้ or แทน default ของ .get เพราะ API อาจส่ง null มาทั้งที่มี key
     detail = {
+        # ติดไว้เพื่อรู้ว่าเรื่องไหนถูกดึงมาแล้วบ้าง หลังจัดอันดับรอบสองสลับลำดับไป
+        "series_id": series_id,
         "title": series.get("title") or "Unknown",
         "url": series.get("url"),
         "status": series.get("status") or "Unknown",
@@ -348,24 +350,35 @@ async def search_series(
         )
 
         # ข้ามเรื่องที่ดึงรายละเอียดไม่สำเร็จ แสดงเท่าที่ได้
-        details = []
-        for outcome in outcomes:
-
-            if isinstance(outcome, BaseException):
-                continue
-
-            outcome["total_hits"] = total_hits
-            details.append(outcome)
+        details = [
+            outcome for outcome in outcomes
+            if not isinstance(outcome, BaseException)
+        ]
 
         if not details:
             raise next(e for e in outcomes if isinstance(e, BaseException))
+
+        # จัดอันดับรอบสอง - รอบแรกเห็นแค่ชื่อหลัก แต่รายละเอียดมีชื่อรองครบแล้ว
+        # เช่น 'akame ga kill' รอบแรกทุกเรื่องตกเกณฑ์จนร่วงไปใช้ลำดับดิบของ API
+        # ภาคก่อนหน้าเลยมาก่อนภาคหลัก รอบสองเทียบกับ 'Akame ga KILL!' จึงได้ตัวที่ใช่
+        # ต้องทำก่อน _fetch_related เพราะมันตามสายจาก details[0]
+        details = rerank_details(query, details)
+
+        for item in details:
+            item["total_hits"] = total_hits
+
+        # เรื่องที่รอบสองตัดทิ้งไม่นับว่า 'เห็นแล้ว' - ถ้ามันเป็นเรื่องเดียวกันคนละสื่อ
+        # ของอันดับ 1 ก็ควรได้กลับเข้ามาพร้อมป้ายบอกความสัมพันธ์ (ดึงจาก cache ไม่เสีย request)
+        seen_ids = {
+            item["series_id"] for item in details if item.get("series_id") is not None
+        }
 
         # เติมเรื่องเดียวกันคนละสื่อที่คะแนนชื่อไม่พาขึ้นมาเอง เช่นค้นชื่อเต็มของ
         # ฉบับมังงะแล้วฉบับนิยายใช้ชื่อสั้นกว่า จะได้ไม่ตกหล่นไปทั้งที่ MU ผูกไว้ให้แล้ว
         extra = await _fetch_related(
             session,
             details[0],
-            set(wanted),
+            seen_ids,
             allowed_types,
             semaphore
         )
