@@ -31,6 +31,10 @@ KAKKOU_END = "Vol 7, Chap 60 (S1) / Vol 13, Chap 112 (S2)"
 GAIKOTSU_START = "Vol 1, Chap 1 (S1) / Vol 5, Chap 21 (S2)"
 GAIKOTSU_END = "Vol 4, Chap 20 (S1)"
 
+# ค่าจริงจาก MangaUpdates - ตัวคั่นไม่มีช่องว่างตามหลัง ('(S1) /Vol 5')
+MAGILUMIERE_START = "Vol 1, Chap 1 (S1) /Vol 5, Chap 34 (S2)"
+MAGILUMIERE_END = "Vol 5, Chap 33 (S1)"
+
 
 def _lines(text: str) -> list[str]:
     return text.split("\n")
@@ -111,10 +115,34 @@ class MessySourceTests(unittest.TestCase):
         self.assertEqual(len(_lines(text)), 2)
 
     def test_a_slash_inside_a_chapter_number_is_not_a_separator(self):
-        # ตัวคั่นของต้นทางคือ " / " มีช่องว่างคร่อม ไม่ใช่ "/" เปล่า ๆ
+        # เลขตอนไม่มีช่องว่างคร่อม "/" และไม่มีวงเล็บปิดนำหน้า จึงไม่ใช่ตัวคั่น
         self.assertEqual(
             format_anime_chapters("Vol 1, Chap 1/2", "Vol 3, Chap 20"),
             "Vol 1, Chap 1/2 → Vol 3, Chap 20",
+        )
+
+    def test_a_separator_without_a_trailing_space_still_splits(self):
+        # ต้นทางเขียน '(S1) /Vol 5' ติดกัน ยึด " / " ตายตัวจะได้รายการเดียว
+        # แล้วป้าย (S2) ท้ายสุดจะกลืน S1 ไปทั้งดุ้น จนสองบรรทัดสลับหัวท้ายกัน
+        self.assertEqual(
+            _lines(format_anime_chapters(MAGILUMIERE_START, MAGILUMIERE_END)),
+            [
+                "S1 · Vol 1, Chap 1 → Vol 5, Chap 33",
+                "S2 · Vol 5, Chap 34 → ยังไม่จบ",
+            ],
+        )
+
+    def test_a_separator_with_no_spaces_at_all_splits_after_a_label(self):
+        # ไม่มีช่องว่างสักฝั่ง แต่วงเล็บปิดของป้ายบอกได้ว่าจบรายการแล้ว
+        self.assertEqual(
+            _lines(format_anime_chapters(
+                "Vol 1, Chap 1 (S1)/Vol 5, Chap 34 (S2)",
+                "Vol 5, Chap 33 (S1)",
+            )),
+            [
+                "S1 · Vol 1, Chap 1 → Vol 5, Chap 33",
+                "S2 · Vol 5, Chap 34 → ยังไม่จบ",
+            ],
         )
 
     def test_uneven_unlabelled_lists_pair_up_by_position(self):

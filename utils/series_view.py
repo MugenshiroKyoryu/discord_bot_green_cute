@@ -59,7 +59,7 @@ def build_embed(data: dict, index: int, total: int, show_type: bool = False) -> 
     anime_text = format_anime_chapters(anime.get("start"), anime.get("end"))
     if anime_text:
         embed.add_field(
-            name="อนิเมะ (ตอนที่ถูกดัดแปลง)",
+            name="อนิเมะ",
             value=anime_text,
             inline=False
         )
