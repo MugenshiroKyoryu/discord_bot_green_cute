@@ -31,9 +31,20 @@ from utils._names import FIELD_LIMIT
 # ซึ่งเลขตอนไม่มีทางเป็นแบบนั้น
 _SEPARATOR = re.compile(r"(?<=\))\s*/\s*|\s+/\s*|\s*/\s+")
 
-# ป้ายอยู่ท้ายรายการในวงเล็บ ส่วนใหญ่เป็น (S1) (S2) แต่มี (OVA) (Movie) ปนมาด้วย
-# จึงรับอะไรก็ได้ในวงเล็บ ทิ้งไปแล้วผู้ใช้จะนึกว่า OVA เป็นซีซั่นหลัก
-_LABEL = re.compile(r"\s*\(([^()]+)\)\s*$")
+# วงเล็บท้ายรายการมีสองความหมาย - ป้ายซีซั่น ('(S1)' '(OVA)') กับหมายเหตุของตอน
+# ('(Skips Chap 32, Partly skips Chap 23-24, 27)') รับอะไรก็ได้เป็นป้ายไม่ได้
+# หมายเหตุจะไปนั่งหน้าบรรทัดแทนชื่อซีซั่น
+_TRAILING_PAREN = re.compile(r"\s*\(([^()]+)\)\s*$")
+
+# คัดป้ายด้วยรายชื่อรูปแบบที่ต้นทางใช้จริง ไม่ใช่คัดหมายเหตุออกด้วยคำอย่าง 'Skips'
+# เดาพลาดทางนี้ ป้ายแบบที่ยังไม่เคยเห็นจะไปโผล่เป็นหมายเหตุ ซึ่งผู้ใช้ยังอ่านออก
+# เดาพลาดอีกทาง (ไล่คัดหมายเหตุ) คือกลับไปเป็นบัคเดิมทันทีที่เจอถ้อยคำใหม่
+_LABEL = re.compile(
+    r"^(?:S|Season|Series)\s*\d+$"
+    r"|^(?:OVA|ONA|OAD|Movie|Film|Special|Part|Cour|Season|TV)(?:\s*\d+)?$"
+    r"|^Live[ -]?Action$",
+    re.IGNORECASE,
+)
 
 # ค่าที่ติด \n มาจากต้นทางทำให้เกิดบรรทัดว่างกลางฟิลด์
 _WHITESPACE = re.compile(r"\s+")
@@ -46,6 +57,40 @@ _BULLET = "·"
 _NO_END = "ยังไม่จบ"
 _NO_START = "ไม่ระบุ"
 _ELLIPSIS = "…"
+
+
+def _split_label(part: str) -> tuple[str | None, str]:
+    """แยกป้ายซีซั่นออกจากตัวข้อความ ส่วนหมายเหตุคงไว้ติดกับตอนตามที่ต้นทางเขียน
+
+    ต้นทางวางป้ายกับหมายเหตุต่อกันได้ ('Vol 6, Chap 40 (S1) (Skips Chap 32)')
+    ถอดแค่วงเล็บก้อนสุดท้ายจะเหลือ '(S1)' ค้างในตัวข้อความ รายการนั้นจึงนับว่า
+    ไม่มีป้าย แล้วทั้งฟิลด์ตกไปจับคู่ตามลำดับจนบรรทัดสลับหัวท้ายกัน จึงต้องไล่
+    ถอดวงเล็บท้ายทีละก้อนจนหมด
+
+    หมายเหตุอธิบายตอนของฝั่งไหนก็ต้องอยู่ฝั่งนั้น ('Skips Chap 32' เป็นเรื่องของ
+    ตอนจบ ไม่ใช่ของทั้งซีซั่น) ย้ายไปอยู่ตำแหน่งป้ายแล้วความหมายเปลี่ยน
+    """
+    label = None
+    notes: list[str] = []
+
+    while True:
+        match = _TRAILING_PAREN.search(part)
+        if not match:
+            break
+
+        inner = match.group(1).strip()
+        if label is None and _LABEL.match(inner):
+            label = inner
+        else:
+            notes.append(f"({inner})")
+
+        part = part[:match.start()].strip()
+
+    if not part:
+        return label, ""
+
+    # เก็บมาจากท้ายไปหน้า กลับลำดับให้เหมือนที่ต้นทางเขียนก่อนต่อกลับเข้าไป
+    return label, " ".join([part, *reversed(notes)])
 
 
 def _tokens(text: str | None) -> list[tuple[str | None, str]]:
@@ -64,17 +109,13 @@ def _tokens(text: str | None) -> list[tuple[str | None, str]]:
         if not part:
             continue
 
-        label = None
-        match = _LABEL.search(part)
-        if match:
-            label = match.group(1).strip()
-            part = part[:match.start()].strip()
+        label, body = _split_label(part)
 
-        # เหลือแต่ป้ายไม่มีตอน - ไม่มีอะไรให้ผู้ใช้อ่าน
-        if not part:
+        # เหลือแต่ป้ายหรือแต่หมายเหตุ ไม่มีตอน - ไม่มีอะไรให้ผู้ใช้อ่าน
+        if not body:
             continue
 
-        tokens.append((label, part))
+        tokens.append((label, body))
 
     return tokens
 

@@ -35,6 +35,11 @@ GAIKOTSU_END = "Vol 4, Chap 20 (S1)"
 MAGILUMIERE_START = "Vol 1, Chap 1 (S1) /Vol 5, Chap 34 (S2)"
 MAGILUMIERE_END = "Vol 5, Chap 33 (S1)"
 
+# ค่าจริงจาก MangaUpdates - ซีซั่นเดียว แต่ฝั่ง end มีหมายเหตุตอนที่ข้ามต่อท้าย
+# ในวงเล็บ ตำแหน่งเดียวกับที่ป้ายซีซั่นอยู่
+KAORU_START = "Vol 1, Chap 1"
+KAORU_END = "Vol 6, Chap 40 (Skips Chap 32, Partly skips Chap 23-24, 27)"
+
 
 def _lines(text: str) -> list[str]:
     return text.split("\n")
@@ -82,6 +87,58 @@ class SeasonPairingTests(unittest.TestCase):
             format_anime_chapters("Vol 2, Chap 10 (OVA)", "Vol 2, Chap 12 (OVA)"),
             "OVA · Vol 2, Chap 10 → Vol 2, Chap 12",
         )
+
+
+class NoteTests(unittest.TestCase):
+    """หมายเหตุท้ายค่า ('(Skips Chap 32, ...)') อยู่ตำแหน่งเดียวกับป้ายซีซั่น
+
+    รับวงเล็บท้ายรายการเป็นป้ายหมดโดยไม่ดูข้างใน หมายเหตุจะไปนั่งหน้าบรรทัด
+    แทนชื่อซีซั่น ผู้ใช้เห็น 'Skips Chap 32, ... · Vol 1, Chap 1 → Vol 6, Chap 40'
+    """
+
+    def test_a_note_stays_with_the_chapter_it_describes(self):
+        self.assertEqual(
+            format_anime_chapters(KAORU_START, KAORU_END),
+            "Vol 1, Chap 1 → Vol 6, Chap 40 (Skips Chap 32, Partly skips Chap 23-24, 27)",
+        )
+
+    def test_a_note_never_takes_the_place_of_a_season_label(self):
+        # ไม่มีป้ายในค่านี้เลย จึงต้องไม่มีตัวคั่นป้ายโผล่มา
+        self.assertNotIn(" · ", format_anime_chapters(KAORU_START, KAORU_END))
+
+    def test_a_note_on_the_start_side_stays_on_the_start_side(self):
+        # หมายเหตุอธิบายฝั่งไหนต้องอยู่ฝั่งนั้น ย้ายข้างแล้วความหมายเปลี่ยน
+        self.assertEqual(
+            format_anime_chapters("Vol 1, Chap 1 (Anime original opening)", "Vol 6, Chap 40"),
+            "Vol 1, Chap 1 (Anime original opening) → Vol 6, Chap 40",
+        )
+
+    def test_a_label_followed_by_a_note_still_pairs_by_label(self):
+        # ถอดแค่วงเล็บก้อนสุดท้ายจะเหลือ '(S1)' ค้างในตัวข้อความ รายการนั้นจึงนับว่า
+        # ไม่มีป้าย ทั้งฟิลด์ตกไปจับคู่ตามลำดับ แล้วบรรทัดสลับหัวท้ายกันทั้งก้อน
+        self.assertEqual(
+            _lines(format_anime_chapters(
+                "Vol 1, Chap 1 (S1) / Vol 7, Chap 50 (S2)",
+                "Vol 6, Chap 40 (S1) (Skips Chap 32) / Vol 9, Chap 70 (S2)",
+            )),
+            [
+                "S1 · Vol 1, Chap 1 → Vol 6, Chap 40 (Skips Chap 32)",
+                "S2 · Vol 7, Chap 50 → Vol 9, Chap 70",
+            ],
+        )
+
+    def test_the_label_forms_the_source_uses_are_still_labels(self):
+        # กันถอยหลัง - ป้ายที่ต้นทางใช้จริงต้องยังขึ้นหน้าบรรทัดเหมือนเดิม
+        for label in ("S3", "Season 2", "OVA", "ONA", "Movie", "Part 2", "Special"):
+            with self.subTest(label=label):
+                self.assertEqual(
+                    format_anime_chapters(f"Vol 1, Chap 1 ({label})", f"Vol 2, Chap 9 ({label})"),
+                    f"{label} · Vol 1, Chap 1 → Vol 2, Chap 9",
+                )
+
+    def test_a_note_with_nothing_in_front_of_it_is_dropped(self):
+        # เหลือแต่หมายเหตุไม่มีตอน - ไม่ต่างจากเหลือแต่ป้าย ไม่มีอะไรให้อ่าน
+        self.assertEqual(format_anime_chapters("(Skips Chap 32)", "Unknown"), "")
 
 
 class SingleSeasonTests(unittest.TestCase):
